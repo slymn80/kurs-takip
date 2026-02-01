@@ -134,7 +134,10 @@ def settings():
 @require_roles("admin")
 def audit_logs():
     logs = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(100).all()
-    return render_template("admin/audit_logs.html", logs=logs)
+    user_ids = {log.actor_user_id for log in logs if log.actor_user_id}
+    users = User.query.filter(User.id.in_(user_ids)).all() if user_ids else []
+    user_map = {user.id: user for user in users}
+    return render_template("admin/audit_logs.html", logs=logs, user_map=user_map)
 
 
 @admin_bp.route("/webhooks/n8n/test", methods=["POST"])
