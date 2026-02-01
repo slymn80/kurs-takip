@@ -25,10 +25,9 @@
           <form method="post" action="{{ url_for('courses.update_status', course_id=item.id) }}" class="inline-flex gap-2">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <select name="status" class="select">
+              <option value="active" selected>Kurs devam ediyor</option>
               <option value="ended">Kurs başarıyla sona erdi</option>
-              <option value="dropped">Kurs yarıda kaldı</option>
               <option value="cancelled">Kurs iptal edildi</option>
-              <option value="updated">Kurs güncellendi</option>
               <option value="archived">Kurs arşivlendi (yıl sonu)</option>
             </select>
             <button class="btn-secondary">Kaydet</button>

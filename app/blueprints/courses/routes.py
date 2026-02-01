@@ -1,8 +1,13 @@
 import io
+import os
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file
 from flask_login import login_required, current_user
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from ...extensions import db
 from ...models import Course, Organization, CourseType, Location, Teacher, User, Student, Enrollment, Session, Attendance, AuditLog
 from ...forms import CourseForm, SessionForm
@@ -13,6 +18,21 @@ from ...services.notifications import emit_webhook, send_whatsapp
 
 
 courses_bp = Blueprint("courses", __name__)
+
+
+def _pdf_font_name():
+    candidates = [
+        ("Arial", r"C:\Windows\Fonts\arial.ttf"),
+        ("DejaVuSans", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
+    ]
+    for name, path in candidates:
+        if os.path.exists(path):
+            try:
+                pdfmetrics.registerFont(TTFont(name, path))
+                return name
+            except Exception:
+                continue
+    return "Helvetica"
 
 
 def _course_query_for_user():
@@ -93,7 +113,7 @@ def new_course():
                 session_date=session_date,
                 start_time=form.start_time.data,
                 end_time=form.end_time.data,
-                lesson_delivered=True
+                lesson_delivered=False
             ))
         db.session.add(AuditLog(actor_user_id=current_user.id, action="create", entity_type="course", entity_id=course.id, after_json=serialize_json({"title": course.title})))
         db.session.commit()
@@ -116,10 +136,30 @@ def new_course():
 @login_required
 def course_detail(course_id):
     course = _course_query_for_user().filter_by(id=course_id).first_or_404()
-    enrollments = Enrollment.query.filter_by(course_id=course.id).all()
+    enrollments = Enrollment.query.filter_by(course_id=course.id, status="active").all()
     sessions = Session.query.filter_by(course_id=course.id).order_by(Session.session_date.asc()).all()
+    total_enrolled = len(enrollments)
+    session_ids = [s.id for s in sessions]
+    attended_counts = {}
+    if session_ids:
+        rows = db.session.query(
+            Attendance.session_id,
+            func.count(Attendance.id)
+        ).filter(
+            Attendance.session_id.in_(session_ids),
+            Attendance.status.in_(["present", "late", "excused"])
+        ).group_by(Attendance.session_id).all()
+        attended_counts = {session_id: count for session_id, count in rows}
     students = Student.query.order_by(Student.full_name).all()
-    return render_template("courses/detail.html", course=course, enrollments=enrollments, sessions=sessions, students=students)
+    return render_template(
+        "courses/detail.html",
+        course=course,
+        enrollments=enrollments,
+        sessions=sessions,
+        students=students,
+        total_enrolled=total_enrolled,
+        attended_counts=attended_counts
+    )
 
 
 @courses_bp.route("/<int:course_id>/enroll", methods=["POST"])
@@ -130,7 +170,7 @@ def enroll_student(course_id):
     student_id = int(request.form.get("student_id"))
     existing = Enrollment.query.filter_by(course_id=course.id, student_id=student_id).first()
     if existing:
-        flash("Bu kursiyer zaten kayitli.", "error")
+        flash("Bu kursiyer zaten kay?tl?.", "error")
         return redirect(url_for("courses.course_detail", course_id=course.id))
     enrollment = Enrollment(course_id=course.id, student_id=student_id)
     db.session.add(enrollment)
@@ -183,7 +223,7 @@ def new_session(course_id):
             start_time=form.start_time.data,
             end_time=form.end_time.data,
             topic=form.topic.data,
-            lesson_delivered=True
+            lesson_delivered=False
         )
         db.session.add(session)
         db.session.commit()
@@ -271,16 +311,98 @@ def take_attendance(session_id):
     return render_template("courses/attendance.html", course=course, session=session, enrollments=enrollments, existing_attendance=existing_attendance)
 
 
+@courses_bp.route("/sessions/<int:session_id>/lesson-delivered", methods=["POST"])
+@login_required
+@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+def update_lesson_delivered(session_id):
+    session = Session.query.get_or_404(session_id)
+    course = _course_query_for_user().filter_by(id=session.course_id).first_or_404()
+    session.lesson_delivered = bool(request.form.get("lesson_delivered"))
+    db.session.add(session)
+    db.session.add(AuditLog(
+        actor_user_id=current_user.id,
+        action="lesson_delivered_update",
+        entity_type="session",
+        entity_id=session.id,
+        after_json=serialize_json({"lesson_delivered": session.lesson_delivered})
+    ))
+    db.session.commit()
+    return redirect(url_for("courses.course_detail", course_id=course.id))
+
+
+@courses_bp.route("/sessions/<int:session_id>/attendance.pdf")
+@login_required
+@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+def attendance_pdf(session_id):
+    session = Session.query.get_or_404(session_id)
+    course = _course_query_for_user().filter_by(id=session.course_id).first_or_404()
+    enrollments = Enrollment.query.filter_by(course_id=course.id, status="active").all()
+    attendance_map = {a.student_id: a for a in Attendance.query.filter_by(session_id=session.id).all()}
+
+    status_labels = {
+        "present": "Mevcut",
+        "absent": "Yok",
+        "late": "Geç kaldı",
+        "excused": "Mazeretli"
+    }
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    font_name = _pdf_font_name()
+    c.setFont(font_name, 14)
+    c.drawString(40, height - 40, "Yoklama Listesi")
+    c.setFont(font_name, 10)
+    c.drawString(40, height - 60, f"Kurs: {course.title}")
+    c.drawString(40, height - 75, f"Tarih: {session.session_date}")
+
+    headers = ["Ad Soyad", "Durum", "Not"]
+    col_x = [40, 300, 420]
+    y = height - 110
+    c.setFont(font_name, 9)
+    for idx, header in enumerate(headers):
+        c.drawString(col_x[idx], y, header)
+    y -= 16
+
+    for enrollment in enrollments:
+        if y < 80:
+            c.showPage()
+            c.setFont(font_name, 9)
+            y = height - 60
+            for idx, header in enumerate(headers):
+                c.drawString(col_x[idx], y, header)
+            y -= 16
+        attendance = attendance_map.get(enrollment.student_id)
+        status = status_labels.get(attendance.status, "—") if attendance else "—"
+        note = attendance.note or "" if attendance else ""
+        c.drawString(col_x[0], y, enrollment.student.full_name)
+        c.drawString(col_x[1], y, status)
+        c.drawString(col_x[2], y, note[:40])
+        y -= 14
+
+    c.save()
+    buffer.seek(0)
+    filename = f"attendance_session_{session.id}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype="application/pdf")
+
+
 @courses_bp.route("/<int:course_id>/attendance.csv")
 @login_required
 @require_roles("teacher", "coordinator", "principal", "attache", "admin")
 def export_attendance(course_id):
     course = _course_query_for_user().filter_by(id=course_id).first_or_404()
     rows = []
-    rows.append("session_date,student_name,status,note")
+    rows.append("Tarih,Öğrenci,Durum,Not")
+    status_labels = {
+        "present": "Mevcut",
+        "absent": "Yok",
+        "late": "Geç kaldı",
+        "excused": "Mazeretli"
+    }
     for session in Session.query.filter_by(course_id=course.id, lesson_delivered=True).all():
         for attendance in Attendance.query.filter_by(session_id=session.id).all():
-            rows.append(f"{session.session_date},{attendance.student.full_name},{attendance.status},{attendance.note or ''}")
+            status = status_labels.get(attendance.status, attendance.status or "")
+            rows.append(f"{session.session_date},{attendance.student.full_name},{status},{attendance.note or ''}")
     csv_content = "\n".join(rows)
     return send_file(
         io.BytesIO(csv_content.encode("utf-8")),

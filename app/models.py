@@ -131,7 +131,7 @@ class Session(db.Model):
     start_time = db.Column(db.Time)
     end_time = db.Column(db.Time)
     topic = db.Column(db.String(200))
-    lesson_delivered = db.Column(db.Boolean, nullable=False, default=True)
+    lesson_delivered = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, default=now_utc)
 
     course = db.relationship("Course")

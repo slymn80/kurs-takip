@@ -59,13 +59,22 @@
   </div>
   <div class="card p-6">
     <table class="table">
-      <thead><tr><th>Tarih</th><th>Saat</th><th>Ders İşlendi</th><th></th></tr></thead>
+      <thead><tr><th>Tarih</th><th>Saat</th><th>Ders İşlendi</th><th>Toplam/Katılan</th><th>PDF</th><th></th></tr></thead>
       <tbody>
         {% for session in sessions %}
         <tr>
           <td>{{ session.session_date }}</td>
           <td>{{ session.start_time }} - {{ session.end_time }}</td>
-          <td>{{ "✅" if session.lesson_delivered else "—" }}</td>
+          <td>
+            <form method="post" action="{{ url_for('courses.update_lesson_delivered', session_id=session.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="checkbox" name="lesson_delivered" value="1" {% if session.lesson_delivered %}checked{% endif %} onchange="this.form.submit()">
+            </form>
+          </td>
+          <td>{{ total_enrolled }} / {{ attended_counts.get(session.id, 0) }}</td>
+          <td>
+            <a class="btn-secondary" href="{{ url_for('courses.attendance_pdf', session_id=session.id) }}">Liste</a>
+          </td>
           <td class="text-right">
             <a class="btn-accent" href="{{ url_for('courses.take_attendance', session_id=session.id) }}">Yoklama Al</a>
           </td>
