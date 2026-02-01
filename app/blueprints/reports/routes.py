@@ -158,8 +158,7 @@ def _pdf_report(title, headers, rows):
         c.line(width - 200, sig_y, width - 60, sig_y)
         c.drawString(60, sig_y - 12, "Öğretmen")
         right_center = width - 130
-        c.drawCentredString(right_center, sig_y - 12, "Şükür KÖSE")
-        c.drawCentredString(right_center, sig_y - 24, "Almatı Eğitim Ataşesi")
+        c.drawCentredString(right_center, sig_y - 12, "Eğitim Ataşesi")
 
     c.setFont(font_name, 14)
     c.drawString(40, height - 40, title)
@@ -220,17 +219,14 @@ def _xlsx_report(headers, rows):
 
     ws.append([])
     ws.append(["Öğretmen"])
-    ws.append(["", "", "", "Şükür KÖSE"])
-    ws.append(["", "", "", "Almatı Eğitim Ataşesi"])
+    ws.append(["", "", "", "Eğitim Ataşesi"])
 
     from openpyxl.styles import Alignment
-    name_row = ws.max_row - 1
-    title_row = ws.max_row
+    name_row = ws.max_row - 0
     if ws.max_column >= 4:
         ws.merge_cells(start_row=name_row, start_column=4, end_row=name_row, end_column=ws.max_column)
-        ws.merge_cells(start_row=title_row, start_column=4, end_row=title_row, end_column=ws.max_column)
         ws.cell(row=name_row, column=4).alignment = Alignment(horizontal="center")
-        ws.cell(row=title_row, column=4).alignment = Alignment(horizontal="center")
+
     stream = io.BytesIO()
     wb.save(stream)
     stream.seek(0)

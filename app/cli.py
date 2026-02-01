@@ -2,7 +2,7 @@
 from flask.cli import with_appcontext
 import click
 from .extensions import db, bcrypt
-from .models import User, Organization, Location, CourseType, Student, Course, Enrollment, Session, Teacher, Attendance, AuditLog, Event, Message
+from .models import User, Organization, Location, CourseType, Student, Course, Enrollment, Session, Teacher, Attendance, AuditLog, Event, Message, Announcement
 
 
 def register_cli(app):
@@ -51,7 +51,7 @@ def seed():
     )
     db.session.add(teacher_profile)
 
-    org = Organization(name="Almatı Lisesi", responsible_person="Ayşe Yılmaz", phone="+77770001111", email="almaty@example.com")
+    org = Organization(name="Eğitim Kurumu", responsible_person="Ayşe Yılmaz", phone="+77770001111", email="kurum@example.com")
     loc = Location(name="Sınıf 1A", capacity=20, has_smart_board=True)
     ctype = CourseType(name="Hazırlık", course_hours=60, delivery_mode="in_person", description="Hazırlık sınıfı")
     db.session.add_all([org, loc, ctype])
@@ -102,7 +102,8 @@ def fix_timezones():
         (Attendance, ["marked_at"]),
         (AuditLog, ["created_at"]),
         (Event, ["created_at"]),
-        (Message, ["created_at"])
+        (Message, ["created_at"]),
+        (Announcement, ["created_at"])
     ]
 
     updated = 0
