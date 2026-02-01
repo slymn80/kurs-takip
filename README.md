@@ -29,11 +29,13 @@ Varsayılan kullanıcılar (seed):
 - coordinator / Coordinator123!
 - teacher / Teacher123!
 
-Test admin (opsiyonel):
+Test kullanıcılar (opsiyonel):
 ```powershell
+flask create-test-user
 flask create-test-admin
 ```
-Kullanıcı: testadmin / Şifre: Test123!
+- test / Test123!
+- testadmin / Test123!
 
 ## Şifre Değiştirme
 - Menüden **Şifre Değiştir** sayfasına gidin.

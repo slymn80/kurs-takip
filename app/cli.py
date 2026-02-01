@@ -9,6 +9,7 @@ def register_cli(app):
     app.cli.add_command(seed)
     app.cli.add_command(fix_timezones)
     app.cli.add_command(create_test_admin)
+    app.cli.add_command(create_test_user)
 
 
 @click.command("seed")
@@ -104,6 +105,26 @@ def create_test_admin():
     db.session.add(user)
     db.session.commit()
     click.echo("Test admin oluşturuldu: testadmin / Test123!")
+
+
+@click.command("create-test-user")
+@with_appcontext
+def create_test_user():
+    existing = User.query.filter_by(username="test").first()
+    if existing:
+        click.echo("Test kullanıcı zaten var: test")
+        return
+    user = User(
+        username="test",
+        full_name="Test Kullanıcı",
+        role="admin",
+        password_hash=bcrypt.generate_password_hash("Test123!").decode("utf-8"),
+        must_change_password=False,
+        is_active=True
+    )
+    db.session.add(user)
+    db.session.commit()
+    click.echo("Test kullanıcı oluşturuldu: test / Test123!")
 
 
 @click.command("fix-timezones")
