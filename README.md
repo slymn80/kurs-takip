@@ -1,13 +1,15 @@
-﻿# Almatı Eğitim Ataşeliği Kurs Takip
+﻿# Eğitim Ataşeliği Kurs Takip
 
 Flask + TailwindCSS tabanlı kurs takip uygulaması. Render.com için hazır.
 
 ## Özellikler
 - RBAC: teacher, coordinator, principal, attache, admin
 - Kurs oluşturma, kursiyer kayıt, oturum ve yoklama
-- Tanımlamalar CRUD
+- Tanımlamalar CRUD (kurum, yer, kurs tipi, öğretmen)
 - İstatistikler (Chart.js)
-- WhatsApp ve n8n webhook entegrasyonu
+- Raporlar (PDF + XLSX)
+- İletişim panosu (öğretmen notları)
+- Duyurular (yalnızca Ataşe yayınlar)
 - Audit log ve sistem ayarları
 
 ## Kurulum (Local)
@@ -22,23 +24,49 @@ flask seed
 flask run
 ```
 
-Varsayılan kullanıcılar:
+Varsayılan kullanıcılar (seed):
 - admin / Admin123!
 - coordinator / Coordinator123!
 - teacher / Teacher123!
 
-## Render Deploy
-- Render'da PostgreSQL DB oluşturun.
-- `render.yaml` ile deploy edin.
-- ENV:
-  - `DATABASE_URL`
-  - `SECRET_KEY`
-  - `N8N_WEBHOOK_URL`
-  - `WHATSAPP_PROVIDER`
+Test admin (opsiyonel):
+```powershell
+flask create-test-admin
+```
+Kullanıcı: testadmin / Şifre: Test123!
 
-Build: `pip install -r requirements.txt && npm ci && npm run build:css && flask db upgrade`
+## Şifre Değiştirme
+- Menüden **Şifre Değiştir** sayfasına gidin.
+- Mevcut şifre + yeni şifre (2 kez) girilerek güncellenir.
 
-Start: `gunicorn app.wsgi:app`
+## Render Deploy (PostgreSQL)
+1) Render’da PostgreSQL DB oluşturun.
+2) Web Service ekleyin.
+
+Build:
+```
+pip install -r requirements.txt && npm ci && npm run build:css && flask db upgrade
+```
+
+Start:
+```
+gunicorn app.wsgi:app
+```
+
+ENV:
+- DATABASE_URL (Internal Database URL)
+- SECRET_KEY
+- FLASK_APP=app.wsgi:app
+- FLASK_ENV=production
+- PYTHON_VERSION=3.11.8
+- NODE_VERSION=20.11.1
+- N8N_WEBHOOK_URL (opsiyonel)
+- WHATSAPP_PROVIDER (varsayılan: disabled)
+
+İlk deploy sonrası (opsiyonel):
+```
+flask seed
+```
 
 ## n8n Webhook Payload
 ```json
@@ -56,5 +84,7 @@ Start: `gunicorn app.wsgi:app`
 ```
 
 ## Notlar
-- WhatsApp ayarları `ENV` üzerinden yönetilir.
+- WhatsApp ayarları ENV üzerinden yönetilir.
 - `absence_threshold_ratio` sistem ayarı ile devamsızlık eşiği belirlenir (varsayılan 0.2).
+- Duyurular sadece Ataşe tarafından yayınlanır.
+- Raporlarda zamanlar kullanıcı cihazının yerel saatine göre gösterilir.
