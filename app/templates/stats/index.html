@@ -1,0 +1,238 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-ink-100 via-white to-emerald-50 border border-ink-100 p-8 mb-8">
+  <div class="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl"></div>
+  <div class="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-amber-200/40 blur-3xl"></div>
+  <div class="relative z-10">
+    <p class="text-sm uppercase tracking-[0.25em] text-ink-400 font-semibold">İstatistik Merkezi</p>
+  </div>
+</div>
+
+<form method="get" class="filter-block grid md:grid-cols-5 gap-3 mb-4">
+  <div>
+    <label class="label">Başlangıç</label>
+    <input type="date" name="date_from" value="{{ filters.date_from }}" class="input">
+  </div>
+  <div>
+    <label class="label">Bitiş</label>
+    <input type="date" name="date_to" value="{{ filters.date_to }}" class="input">
+  </div>
+  <div>
+    <label class="label">Kurum</label>
+    <select name="organization_id" class="select">
+      <option value="">Tümü</option>
+      {% for org in organizations %}
+        <option value="{{ org.id }}" {% if filters.organization_id == org.id %}selected{% endif %}>{{ org.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Kurs Tipi</label>
+    <select name="course_type_id" class="select">
+      <option value="">Tümü</option>
+      {% for ct in course_types %}
+        <option value="{{ ct.id }}" {% if filters.course_type_id == ct.id %}selected{% endif %}>{{ ct.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Öğretmen</label>
+    <select name="teacher_id" class="select">
+      <option value="">Tümü</option>
+      {% for t in teachers %}
+        <option value="{{ t.id }}" {% if filters.teacher_id == t.id %}selected{% endif %}>{{ t.full_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="md:col-span-5 flex flex-wrap gap-2">
+    <button class="btn-accent">Filtrele</button>
+    <a class="btn-secondary" href="{{ url_for('stats.index') }}">Sıfırla</a>
+    <button type="button" class="btn-secondary" data-date-range="7">Son 7 Gün</button>
+    <button type="button" class="btn-secondary" data-date-range="30">Son 30 Gün</button>
+  </div>
+</form>
+
+{% set active_filters = [] %}
+{% if filters.date_from %}{% set _ = active_filters.append('Başlangıç: ' ~ filters.date_from) %}{% endif %}
+{% if filters.date_to %}{% set _ = active_filters.append('Bitiş: ' ~ filters.date_to) %}{% endif %}
+{% for org in organizations %}{% if filters.organization_id == org.id %}{% set _ = active_filters.append('Kurum: ' ~ org.name) %}{% endif %}{% endfor %}
+{% for ct in course_types %}{% if filters.course_type_id == ct.id %}{% set _ = active_filters.append('Kurs Tipi: ' ~ ct.name) %}{% endif %}{% endfor %}
+{% for t in teachers %}{% if filters.teacher_id == t.id %}{% set _ = active_filters.append('Öğretmen: ' ~ t.full_name) %}{% endif %}{% endfor %}
+
+{% if active_filters %}
+  <div class="flex flex-wrap gap-2 mb-6">
+    {% for chip in active_filters %}
+      <span class="badge badge-success">{{ chip }}</span>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
+  <div class="card p-5 border-emerald-200/60">
+    <p class="text-ink-400 text-xs uppercase">Aktif Kurs</p>
+    <div class="flex items-center justify-between">
+      <p class="text-3xl font-display">{{ active_courses }}</p>
+      <span class="text-emerald-600 text-sm">▲</span>
+    </div>
+  </div>
+  <div class="card p-5 border-amber-200/60">
+    <p class="text-ink-400 text-xs uppercase">Biten Kurs</p>
+    <div class="flex items-center justify-between">
+      <p class="text-3xl font-display">{{ ended_courses }}</p>
+      <span class="text-amber-600 text-sm">■</span>
+    </div>
+  </div>
+  <div class="card p-5 border-ink-100">
+    <p class="text-ink-400 text-xs uppercase">Toplam Kursiyer</p>
+    <div class="flex items-center justify-between">
+      <p class="text-3xl font-display">{{ total_students }}</p>
+      <span class="text-ink-500 text-sm">●</span>
+    </div>
+  </div>
+  <div class="card p-5 border-ink-100">
+    <p class="text-ink-400 text-xs uppercase">Toplam Oturum</p>
+    <div class="flex items-center justify-between">
+      <p class="text-3xl font-display">{{ total_sessions }}</p>
+      <span class="text-ink-500 text-sm">◆</span>
+    </div>
+  </div>
+  <div class="card p-5 border-rose-200/60">
+    <p class="text-ink-400 text-xs uppercase">Devamsızlık Oranı</p>
+    <div class="flex items-center justify-between">
+      <p class="text-3xl font-display">%{{ absence_rate }}</p>
+      <span class="text-rose-600 text-sm">▼</span>
+    </div>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6 mt-8">
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-display text-xl">Kurum Bazında Kurs</h3>
+      <button class="btn-secondary" data-download-chart="orgChart">PNG</button>
+    </div>
+    <canvas id="orgChart"></canvas>
+  </div>
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-display text-xl">Kurs Tipi Bazında</h3>
+      <button class="btn-secondary" data-download-chart="typeChart">PNG</button>
+    </div>
+    <canvas id="typeChart"></canvas>
+  </div>
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-display text-xl">Öğretmen Bazında</h3>
+      <button class="btn-secondary" data-download-chart="teacherChart">PNG</button>
+    </div>
+    <canvas id="teacherChart"></canvas>
+  </div>
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-display text-xl">Aylık Devamsızlık</h3>
+      <button class="btn-secondary" data-download-chart="absenceChart">PNG</button>
+    </div>
+    <canvas id="absenceChart"></canvas>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-2 gap-6 mt-8">
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-display text-xl">Kurs Tipi Bazında Yoklama</h3>
+      <button class="btn-secondary" data-download-chart="attendanceTypeChart">PNG</button>
+    </div>
+    <canvas id="attendanceTypeChart"></canvas>
+  </div>
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-display text-xl">Dağılımlar</h3>
+      <button class="btn-secondary" id="orgCsv">CSV</button>
+    </div>
+    <table class="table">
+      <thead><tr><th>Kurum</th><th>Kurs Sayısı</th></tr></thead>
+      <tbody>
+        {% for item in org_counts %}
+        <tr>
+          <td>{{ item[0] }}</td>
+          <td>{{ item[1] }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="2" class="text-ink-400">Veri yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const orgLabels = {{ org_counts|map(attribute=0)|list|tojson }};
+  const orgData = {{ org_counts|map(attribute=1)|list|tojson }};
+  const typeLabels = {{ type_counts|map(attribute=0)|list|tojson }};
+  const typeData = {{ type_counts|map(attribute=1)|list|tojson }};
+  const teacherLabels = {{ teacher_counts|map(attribute=0)|list|tojson }};
+  const teacherData = {{ teacher_counts|map(attribute=1)|list|tojson }};
+  const absLabels = {{ monthly_absent|map(attribute=0)|list|tojson }};
+  const absData = {{ monthly_absent|map(attribute=1)|list|tojson }};
+  const attendanceTypeLabels = {{ attendance_by_course_type|map(attribute=0)|list|tojson }};
+  const attendanceTypeData = {{ attendance_by_course_type|map(attribute=1)|list|tojson }};
+
+  const palette = ['#1f6f53', '#1f2a36', '#7d6a58', '#c2b3a0', '#2d3b4d', '#2f8f6b'];
+
+  const chartConfig = (labels, data, label) => ({
+    type: 'bar',
+    data: { labels, datasets: [{ label, data, backgroundColor: '#1f6f53' }] },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+  });
+
+  const charts = {};
+  charts.orgChart = new Chart(document.getElementById('orgChart'), chartConfig(orgLabels, orgData, 'Kurum'));
+  charts.typeChart = new Chart(document.getElementById('typeChart'), chartConfig(typeLabels, typeData, 'Kurs Tipi'));
+  charts.teacherChart = new Chart(document.getElementById('teacherChart'), chartConfig(teacherLabels, teacherData, 'Öğretmen'));
+  charts.absenceChart = new Chart(document.getElementById('absenceChart'), {
+    type: 'line',
+    data: { labels: absLabels, datasets: [{ label: 'Devamsızlık', data: absData, borderColor: '#7d6a58', fill: false, tension: 0.35 }] }
+  });
+  charts.attendanceTypeChart = new Chart(document.getElementById('attendanceTypeChart'), {
+    type: 'doughnut',
+    data: { labels: attendanceTypeLabels, datasets: [{ data: attendanceTypeData, backgroundColor: palette }] }
+  });
+
+  document.querySelectorAll('[data-date-range]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const days = Number(btn.dataset.dateRange);
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - days);
+      const format = (d) => d.toISOString().slice(0, 10);
+      document.querySelector('input[name="date_from"]').value = format(start);
+      document.querySelector('input[name="date_to"]').value = format(end);
+      btn.closest('form').submit();
+    });
+  });
+
+  document.querySelectorAll('[data-download-chart]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.downloadChart;
+      const chart = charts[id];
+      if (!chart) return;
+      const link = document.createElement('a');
+      link.href = chart.toBase64Image();
+      link.download = `${id}.png`;
+      link.click();
+    });
+  });
+
+  document.getElementById('orgCsv')?.addEventListener('click', () => {
+    const rows = [['Kurum','Kurs Sayısı']];
+    orgLabels.forEach((label, idx) => rows.push([label, orgData[idx]]));
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'kurum_dagilim.csv';
+    link.click();
+  });
+</script>
+{% endblock %}

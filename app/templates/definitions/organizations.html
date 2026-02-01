@@ -1,0 +1,62 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card p-6 lg:col-span-1">
+    <h2 class="font-display text-xl mb-4">Yeni Kurum</h2>
+    <form method="post" class="space-y-3">
+      {{ form.hidden_tag() }}
+      <div>
+        <label class="label">Kurum Adı</label>
+        {{ form.name(class_='input') }}
+      </div>
+      <div>
+        <label class="label">Sorumlu Personel</label>
+        {{ form.responsible_person(class_='input') }}
+      </div>
+      <div>
+        <label class="label">Telefon</label>
+        {{ form.phone(class_='input') }}
+      </div>
+      <div>
+        <label class="label">E-posta</label>
+        {{ form.email(class_='input') }}
+      </div>
+      <div>
+        <label class="label">Adres</label>
+        {{ form.address(class_='input') }}
+      </div>
+      <div>
+        <label class="label">Not</label>
+        {{ form.notes(class_='input') }}
+      </div>
+      <button class="btn-primary w-full">Kaydet</button>
+    </form>
+  </div>
+  <div class="card p-6 lg:col-span-2">
+    <h2 class="font-display text-xl mb-4">Kurumlar</h2>
+    <table class="table">
+      <thead><tr><th>Ad</th><th>Sorumlu</th><th>Telefon</th><th>E-posta</th><th>Adres</th><th></th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.name }}</td>
+          <td>{{ item.responsible_person }}</td>
+          <td>{{ item.phone }}</td>
+          <td>{{ item.email }}</td>
+          <td>{{ item.address }}</td>
+          <td class="text-right">
+            <a class="btn-secondary" href="{{ url_for('definitions.edit_organization', org_id=item.id) }}">Düzenle</a>
+            {% if current_user.role == 'admin' %}
+            <form method="post" action="{{ url_for('definitions.delete_organization', org_id=item.id) }}" class="inline">
+              {{ form.hidden_tag() }}
+              <button class="btn-secondary">Sil</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

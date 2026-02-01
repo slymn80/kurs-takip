@@ -1,0 +1,30 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="max-w-xl">
+  <h2 class="font-display text-xl mb-4">Yer Düzenle</h2>
+  <form method="post" class="card p-6 space-y-3">
+    {{ form.hidden_tag() }}
+    <div>
+      <label class="label">Yer Adı</label>
+      {{ form.name(class_='input') }}
+    </div>
+    <div>
+      <label class="label">Adres</label>
+      {{ form.address(class_='input') }}
+    </div>
+    <div>
+      <label class="label">Kapasite</label>
+      {{ form.capacity(class_='input') }}
+    </div>
+    <div class="flex items-center gap-2">
+      {{ form.has_smart_board() }}
+      <span class="text-sm">Akıllı tahta var</span>
+    </div>
+    <div>
+      <label class="label">Not</label>
+      {{ form.notes(class_='input') }}
+    </div>
+    <button class="btn-primary">Güncelle</button>
+  </form>
+</div>
+{% endblock %}

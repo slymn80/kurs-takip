@@ -1,0 +1,65 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card p-6 lg:col-span-1">
+    <h2 class="font-display text-xl mb-4">Yeni Kursiyer</h2>
+    <form method="post" class="space-y-3">
+      {{ form.hidden_tag() }}
+      <div>
+        <label class="label">Ad Soyad</label>
+        {{ form.full_name(class_='input') }}
+      </div>
+      <div>
+        <label class="label">IIN</label>
+        {{ form.iin(class_='input') }}
+      </div>
+      <div>
+        <label class="label">Eğitim Durumu</label>
+        {{ form.education_level(class_='select') }}
+      </div>
+      <div>
+        <label class="label">Kursa Kaydet (opsiyonel)</label>
+        {{ form.course_id(class_='select') }}
+      </div>
+      <div>
+        <label class="label">Telefon</label>
+        {{ form.phone(class_='input') }}
+      </div>
+      <div>
+        <label class="label">E-posta</label>
+        {{ form.email(class_='input') }}
+      </div>
+      <div>
+        <label class="label">Not</label>
+        {{ form.notes(class_='input') }}
+      </div>
+      <button class="btn-primary w-full">Kaydet</button>
+    </form>
+  </div>
+  <div class="card p-6 lg:col-span-2">
+    <h2 class="font-display text-xl mb-4">Kursiyerler</h2>
+    <table class="table">
+      <thead><tr><th>Ad</th><th>IIN</th><th>Eğitim</th><th>Telefon</th><th></th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.full_name }}</td>
+          <td>{{ item.iin }}</td>
+          <td>{{ item.education_level }}</td>
+          <td>{{ item.phone }}</td>
+          <td class="text-right">
+            <a class="btn-secondary" href="{{ url_for('definitions.edit_student', student_id=item.id) }}">Düzenle</a>
+            {% if current_user.role == 'admin' %}
+            <form method="post" action="{{ url_for('definitions.delete_student', student_id=item.id) }}" class="inline">
+              {{ form.hidden_tag() }}
+              <button class="btn-secondary">Sil</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

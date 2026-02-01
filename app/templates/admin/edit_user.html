@@ -1,0 +1,18 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="max-w-xl">
+  <h2 class="font-display text-xl mb-4">Kullanıcı Düzenle</h2>
+  <form method="post" class="card p-6 space-y-3">
+    {{ form.hidden_tag() }}
+    <div><label class="label">Kullanıcı Adı</label>{{ form.username(class_='input') }}</div>
+    <div><label class="label">Ad Soyad</label>{{ form.full_name(class_='input') }}</div>
+    <div><label class="label">Telefon</label>{{ form.phone(class_='input') }}</div>
+    <div><label class="label">E-posta</label>{{ form.email(class_='input') }}</div>
+    <div><label class="label">Rol</label>{{ form.role(class_='select') }}</div>
+    <div class="flex items-center gap-2">
+      {{ form.is_active() }}<span class="text-sm">Aktif</span>
+    </div>
+    <button class="btn-primary">Güncelle</button>
+  </form>
+</div>
+{% endblock %}

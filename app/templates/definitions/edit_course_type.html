@@ -1,0 +1,26 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="max-w-xl">
+  <h2 class="font-display text-xl mb-4">Kurs Tipi Düzenle</h2>
+  <form method="post" class="card p-6 space-y-3">
+    {{ form.hidden_tag() }}
+    <div>
+      <label class="label">Kurs Tipi</label>
+      {{ form.name(class_='input') }}
+    </div>
+    <div>
+      <label class="label">Kurs Saati</label>
+      {{ form.course_hours(class_='input') }}
+    </div>
+    <div>
+      <label class="label">Öğretim Şekli</label>
+      {{ form.delivery_mode(class_='select') }}
+    </div>
+    <div>
+      <label class="label">Açıklama</label>
+      {{ form.description(class_='input') }}
+    </div>
+    <button class="btn-primary">Güncelle</button>
+  </form>
+</div>
+{% endblock %}

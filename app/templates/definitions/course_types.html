@@ -1,0 +1,55 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card p-6 lg:col-span-1">
+    <h2 class="font-display text-xl mb-4">Yeni Kurs Tipi</h2>
+    <form method="post" class="space-y-3">
+      {{ form.hidden_tag() }}
+      <div>
+        <label class="label">Kurs Tipi</label>
+        {{ form.name(class_='input') }}
+      </div>
+      <div>
+        <label class="label">Kurs Saati</label>
+        {{ form.course_hours(class_='input') }}
+      </div>
+      <div>
+        <label class="label">Öğretim Şekli</label>
+        {{ form.delivery_mode(class_='select') }}
+      </div>
+      <div>
+        <label class="label">Açıklama</label>
+        {{ form.description(class_='input') }}
+      </div>
+      <button class="btn-primary w-full">Kaydet</button>
+    </form>
+  </div>
+  <div class="card p-6 lg:col-span-2">
+    <h2 class="font-display text-xl mb-4">Kurs Tipleri</h2>
+    <table class="table">
+      <thead><tr><th>Ad</th><th>Kurs Saati</th><th>Öğretim Şekli</th><th>Açıklama</th><th></th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.name }}</td>
+          <td>{{ item.course_hours }}</td>
+          <td>
+            {% if item.delivery_mode == 'in_person' %}Yüz yüze{% elif item.delivery_mode == 'remote' %}Uzaktan{% elif item.delivery_mode == 'hybrid' %}Hibrit{% else %}{{ item.delivery_mode }}{% endif %}
+          </td>
+          <td>{{ item.description }}</td>
+          <td class="text-right">
+            <a class="btn-secondary" href="{{ url_for('definitions.edit_course_type', ct_id=item.id) }}">Düzenle</a>
+            {% if current_user.role == 'admin' %}
+            <form method="post" action="{{ url_for('definitions.delete_course_type', ct_id=item.id) }}" class="inline">
+              {{ form.hidden_tag() }}
+              <button class="btn-secondary">Sil</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

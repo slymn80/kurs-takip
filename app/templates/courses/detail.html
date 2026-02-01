@@ -1,0 +1,80 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h2 class="font-display text-2xl">{{ course.title }}</h2>
+    <p class="text-ink-500">{{ course.organization.name }} · {{ course.course_type.name }}</p>
+  </div>
+  <a href="{{ url_for('courses.new_session', course_id=course.id) }}" class="btn-secondary">Oturum Ekle</a>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card p-6 lg:col-span-2">
+    <h3 class="font-display text-xl mb-4">Kursiyerler</h3>
+    <form method="post" action="{{ url_for('courses.enroll_student', course_id=course.id) }}" class="flex gap-3 mb-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <select name="student_id" class="select flex-1">
+        {% for student in students %}
+          <option value="{{ student.id }}">{{ student.full_name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn-primary">Ekle</button>
+    </form>
+    <table class="table">
+      <thead><tr><th>Ad</th><th>Telefon</th><th>Durum</th><th></th></tr></thead>
+      <tbody>
+        {% for enrollment in enrollments %}
+        <tr>
+          <td>{{ enrollment.student.full_name }}</td>
+          <td>{{ enrollment.student.phone }}</td>
+          <td>{{ enrollment.status }}</td>
+          <td class="text-right">
+            <form method="post" action="{{ url_for('courses.remove_enrollment', course_id=course.id, student_id=enrollment.student_id) }}" onsubmit="return confirm('Kursiyer çıkarılsın mı?')" class="inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn-secondary">Çıkar</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-ink-400">Kursiyer yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card p-6">
+    <h3 class="font-display text-xl mb-4">Bilgiler</h3>
+    <ul class="text-sm space-y-2">
+      <li>Kurum: {{ course.organization.name }}</li>
+      <li>Öğretmen: {{ course.teacher.full_name if course.teacher else '-' }}</li>
+      <li>Tarih: {{ course.start_date }} - {{ course.end_date }}</li>
+      <li>Yer: {{ course.location.name }}</li>
+    </ul>
+    <a href="{{ url_for('courses.export_attendance', course_id=course.id) }}" class="btn-secondary mt-4">Devamsızlık CSV</a>
+  </div>
+</div>
+
+<section class="mt-10">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-display text-xl">Oturumlar</h3>
+  </div>
+  <div class="card p-6">
+    <table class="table">
+      <thead><tr><th>Tarih</th><th>Saat</th><th>Ders İşlendi</th><th></th></tr></thead>
+      <tbody>
+        {% for session in sessions %}
+        <tr>
+          <td>{{ session.session_date }}</td>
+          <td>{{ session.start_time }} - {{ session.end_time }}</td>
+          <td>{{ "✅" if session.lesson_delivered else "—" }}</td>
+          <td class="text-right">
+            <a class="btn-accent" href="{{ url_for('courses.take_attendance', session_id=session.id) }}">Yoklama Al</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-ink-400">Oturum yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

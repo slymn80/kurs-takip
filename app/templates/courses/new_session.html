@@ -1,0 +1,24 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<h2 class="font-display text-2xl mb-4">Yeni Oturum</h2>
+<form method="post" class="card p-6 space-y-4 max-w-xl">
+  {{ form.hidden_tag() }}
+  <div>
+    <label class="label">Tarih</label>
+    {{ form.session_date(class_='input') }}
+  </div>
+  <div>
+    <label class="label">Başlangıç Saati</label>
+    {{ form.start_time(class_='input') }}
+  </div>
+  <div>
+    <label class="label">Bitiş Saati</label>
+    {{ form.end_time(class_='input') }}
+  </div>
+  <div>
+    <label class="label">Konu</label>
+    {{ form.topic(class_='input') }}
+  </div>
+  <button class="btn-primary">Kaydet</button>
+</form>
+{% endblock %}

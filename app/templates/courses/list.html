@@ -1,0 +1,45 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h2 class="font-display text-2xl">Kurslar</h2>
+    <p class="text-ink-500">Aktif kurslar</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <a href="{{ url_for('courses.completed_courses') }}" class="btn-secondary">Biten Kurslar</a>
+    <a href="{{ url_for('courses.new_course') }}" class="btn-primary">Yeni Kurs Başlat</a>
+  </div>
+</div>
+
+<div class="card p-6">
+  <table class="table">
+    <thead><tr><th>Başlık</th><th>Öğretmen</th><th>Tarih</th><th>Durum</th><th></th></tr></thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.title }}</td>
+        <td>{{ item.teacher.full_name if item.teacher else '-' }}</td>
+        <td>{{ item.start_date }} - {{ item.end_date }}</td>
+        <td><span class="badge badge-success">{{ item.status }}</span></td>
+        <td class="text-right">
+          <form method="post" action="{{ url_for('courses.update_status', course_id=item.id) }}" class="inline-flex gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select name="status" class="select">
+              <option value="ended">Kurs başarıyla sona erdi</option>
+              <option value="dropped">Kurs yarıda kaldı</option>
+              <option value="cancelled">Kurs iptal edildi</option>
+              <option value="updated">Kurs güncellendi</option>
+              <option value="archived">Kurs arşivlendi (yıl sonu)</option>
+            </select>
+            <button class="btn-secondary">Kaydet</button>
+          </form>
+          <a class="btn-secondary ml-2" href="{{ url_for('courses.course_detail', course_id=item.id) }}">Detay</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="text-ink-400">Kurs bulunamadı.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

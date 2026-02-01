@@ -1,0 +1,40 @@
+﻿<div id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 transform bg-white border-r border-ink-100 px-4 py-6 transition-transform duration-300 lg:translate-x-0 -translate-x-full">
+  <div class="flex items-center justify-between">
+    <div>
+      <p class="text-sm uppercase tracking-wide text-ink-600 font-semibold">Almatı Eğitim Ataşeliği</p>
+      <h1 class="font-display text-lg font-normal text-ink-600">Kurs Takip Yazılımı</h1>
+    </div>
+    <button class="lg:hidden" data-close-sidebar>
+      <span class="text-ink-500">Kapat</span>
+    </button>
+  </div>
+  <nav class="mt-8 space-y-2 overflow-y-auto max-h-[calc(100vh-140px)] pr-1">
+    <a href="{{ url_for('dashboard.index') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Genel Durum</a>
+    <a href="{{ url_for('courses.list_courses') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Kurslar</a>
+    {% if current_user.role in ['teacher','coordinator','principal','attache','admin'] %}
+      <a href="{{ url_for('definitions.students') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Kursiyerler</a>
+      <a href="{{ url_for('messages.index') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">İletişim</a>
+      <a href="{{ url_for('stats.index') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">İstatistikler</a>
+      <a href="{{ url_for('reports.index') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Raporlar</a>
+      <a href="{{ url_for('announcements.index') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Duyurular</a>
+    {% endif %}
+    {% if current_user.role in ['coordinator','principal','attache','admin'] %}
+      <div class="pt-4 text-xs uppercase tracking-wide text-ink-400">Tanımlamalar</div>
+      <a href="{{ url_for('definitions.organizations') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Kurumlar</a>
+      <a href="{{ url_for('definitions.locations') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Yerler</a>
+      <a href="{{ url_for('definitions.course_types') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Kurs Tipleri</a>
+      <a href="{{ url_for('definitions.teachers') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Öğretmenler</a>
+    {% endif %}
+    {% if current_user.role == 'admin' %}
+      <div class="pt-4 text-xs uppercase tracking-wide text-ink-400">Admin</div>
+      <a href="{{ url_for('admin.users') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Kullanıcılar</a>
+      <a href="{{ url_for('admin.settings') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Ayarlar</a>
+      <a href="{{ url_for('admin.year_rollover') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Akademik Yıl Geçisi</a>
+      <a href="{{ url_for('admin.audit_logs') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Denetim Logları</a>
+    {% endif %}
+    <div class="pt-4 border-t border-ink-100"></div>
+    <a href="{{ url_for('auth.update_password') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Şifre Değiştir</a>
+    <a href="{{ url_for('auth.logout') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Çıkış</a>
+  </nav>
+</div>
+<div id="sidebar-overlay" class="fixed inset-0 bg-ink-900/30 backdrop-blur-sm hidden lg:hidden" data-close-sidebar></div>

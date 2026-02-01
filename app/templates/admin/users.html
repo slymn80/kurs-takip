@@ -1,0 +1,61 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card p-6 lg:col-span-1">
+    <h2 class="font-display text-xl mb-4">Yeni Kullanıcı</h2>
+    {% if session.get('last_temp_password') %}
+      <div class="rounded-xl border border-ink-100 bg-ink-50 p-4 mb-4">
+        <div class="text-xs uppercase tracking-wide text-ink-400">Geçici Şifre</div>
+        <div class="text-sm text-ink-600 mt-1">Kullanıcı: {{ session.get('last_temp_username') }}</div>
+        <div class="mt-2 flex items-center gap-2">
+          <input id="tempPassword" class="input" readonly value="{{ session.get('last_temp_password') }}">
+          <button type="button" class="btn-secondary" onclick="navigator.clipboard.writeText(document.getElementById('tempPassword').value)">Kopyala</button>
+        </div>
+        <form method="post" action="{{ url_for('admin.clear_temp_password') }}" class="mt-2">
+          {{ form.hidden_tag() }}
+          <button class="btn-secondary">Kapat</button>
+        </form>
+      </div>
+    {% endif %}
+    <form method="post" class="space-y-3">
+      {{ form.hidden_tag() }}
+      <div><label class="label">Kullanıcı Adı</label>{{ form.username(class_='input') }}</div>
+      <div><label class="label">Ad Soyad</label>{{ form.full_name(class_='input') }}</div>
+      <div><label class="label">Telefon</label>{{ form.phone(class_='input') }}</div>
+      <div><label class="label">E-posta</label>{{ form.email(class_='input') }}</div>
+      <div><label class="label">Rol</label>{{ form.role(class_='select') }}</div>
+      <div class="flex items-center gap-2">
+        {{ form.is_active() }}<span class="text-sm">Aktif</span>
+      </div>
+      <button class="btn-primary w-full">Oluştur</button>
+    </form>
+    <p class="text-xs text-ink-400 mt-3">Geçici şifre otomatik oluşturulur ve işlem sonunda gösterilir.</p>
+  </div>
+  <div class="card p-6 lg:col-span-2">
+    <h2 class="font-display text-xl mb-4">Kullanıcılar</h2>
+    <table class="table">
+      <thead><tr><th>Kullanıcı</th><th>Rol</th><th>Durum</th><th></th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.full_name }}<div class="text-xs text-ink-400">{{ item.username }}</div></td>
+          <td>{{ item.role }}</td>
+          <td>{{ 'Aktif' if item.is_active else 'Pasif' }}</td>
+          <td class="text-right">
+            <a class="btn-secondary" href="{{ url_for('admin.edit_user', user_id=item.id) }}">Düzenle</a>
+            <form method="post" action="{{ url_for('admin.reset_user_password', user_id=item.id) }}" class="inline" onsubmit="return confirm('Şifre sıfırlansın mı?')">
+              {{ form.hidden_tag() }}
+              <button class="btn-secondary">Şifre Sıfırla</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.delete_user', user_id=item.id) }}" class="inline" onsubmit="return confirm('Kullanıcı silinsin mi?')">
+              {{ form.hidden_tag() }}
+              <button class="btn-secondary">Sil</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

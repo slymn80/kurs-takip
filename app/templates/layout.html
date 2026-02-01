@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title or 'Kurs Takip' }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body class="bg-gradient-to-br from-ink-50 via-white to-ink-100 text-ink-900">
+  {% if current_user.is_authenticated %}
+  <div class="relative min-h-screen">
+    {% include 'partials/sidebar.html' %}
+    <div class="lg:pl-64">
+      {% include 'partials/topbar.html' %}
+      <main class="px-6 pb-16 pt-6">
+        {% include 'partials/flash.html' %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+  {% else %}
+    {% block auth %}{% endblock %}
+  {% endif %}
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
+  <div class="card p-5">
+    <p class="text-ink-400 text-xs uppercase">Bugünkü Ders</p>
+    <p class="text-3xl font-display">{{ today_sessions_count }}</p>
+  </div>
+  <div class="card p-5">
+    <p class="text-ink-400 text-xs uppercase">Aktif Kurs</p>
+    <p class="text-3xl font-display">{{ active_courses }}</p>
+  </div>
+  <div class="card p-5">
+    <p class="text-ink-400 text-xs uppercase">Aktif Öğretmen</p>
+    <p class="text-3xl font-display">{{ active_teachers }}</p>
+  </div>
+  <div class="card p-5">
+    <p class="text-ink-400 text-xs uppercase">Toplam Kursiyer</p>
+    <p class="text-3xl font-display">{{ total_students }}</p>
+  </div>
+  <div class="card p-5">
+    <p class="text-ink-400 text-xs uppercase">Bu Ay Devamsızlık</p>
+    <p class="text-3xl font-display">%{{ absence_rate }}</p>
+  </div>
+</div>
+
+<section class="mt-10">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-display text-xl">Son Etkinlikler</h3>
+  </div>
+  <div class="card p-6">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Kursiyer</th>
+          <th>Kurs</th>
+          <th>Tarih</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for enrollment in recent_enrollments %}
+        <tr>
+          <td>{{ enrollment.student.full_name }}</td>
+          <td>{{ enrollment.course.title }}</td>
+          <td>{{ enrollment.enrolled_at.date() }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="3" class="text-ink-400">Kayıt bulunmuyor.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: kurs-takip
+    env: python
+    buildCommand: "pip install -r requirements.txt && npm ci && npm run build:css && flask db upgrade"
+    startCommand: "gunicorn app.wsgi:app"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kurs-takip-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+      - key: N8N_WEBHOOK_URL
+        value: ""
+      - key: WHATSAPP_PROVIDER
+        value: disabled
+
+databases:
+  - name: kurs-takip-db
+    databaseName: kurs_takip
+    user: kurs_takip

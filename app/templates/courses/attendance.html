@@ -1,0 +1,48 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<h2 class="font-display text-2xl mb-4">Yoklama Al - {{ session.session_date }}</h2>
+<form method="post" class="card p-6 space-y-4" id="attendance-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="flex items-center gap-3">
+    <input type="checkbox" id="lesson_delivered" name="lesson_delivered" value="1" {% if session.lesson_delivered %}checked{% endif %}>
+    <label for="lesson_delivered" class="text-sm">Ders işlendi</label>
+    <span class="text-xs text-ink-400">İşlenmediyse yoklama girilmez.</span>
+  </div>
+  <table class="table" id="attendance-table">
+    <thead><tr><th>Ad</th><th>Durum</th><th>Not</th></tr></thead>
+    <tbody>
+      {% for enrollment in enrollments %}
+      {% set existing = existing_attendance.get(enrollment.student_id) %}
+      <tr>
+        <td>{{ enrollment.student.full_name }}</td>
+        <td>
+          <select name="status_{{ enrollment.student_id }}" class="select">
+            {% for status in ['present','absent','late','excused'] %}
+              <option value="{{ status }}" {% if existing and existing.status == status %}selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td>
+          <input type="text" name="note_{{ enrollment.student_id }}" value="{{ existing.note if existing else '' }}" class="input">
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <button class="btn-primary">Kaydet</button>
+</form>
+
+<script>
+  const checkbox = document.getElementById('lesson_delivered');
+  const table = document.getElementById('attendance-table');
+  const toggleInputs = () => {
+    const disabled = !checkbox.checked;
+    table.querySelectorAll('select, input[type="text"]').forEach((el) => {
+      el.disabled = disabled;
+      el.classList.toggle('opacity-50', disabled);
+    });
+  };
+  checkbox.addEventListener('change', toggleInputs);
+  toggleInputs();
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h2 class="font-display text-2xl">İletişim Panosu</h2>
+    <p class="text-ink-500">Öğretmenler ve yöneticiler kısa notlar paylaşabilir.</p>
+  </div>
+</div>
+
+<div class="card p-6 mb-6">
+  <form method="post" class="space-y-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div>
+      <label class="label">Mesaj (maksimum 200 karakter)</label>
+      <textarea name="content" class="input" rows="3" maxlength="200" placeholder="Kısa bir bilgilendirme yazın..."></textarea>
+      <div class="text-xs text-ink-400 mt-1">200 karakter sınırı vardır.</div>
+    </div>
+    <button class="btn-primary">Paylaş</button>
+  </form>
+</div>
+
+<div class="card p-6">
+  <h3 class="font-display text-xl mb-4">Paylaşılan Notlar</h3>
+  <div class="space-y-3">
+    {% for item in items %}
+      <div class="rounded-2xl border border-ink-100 bg-white p-4">
+        <div class="flex items-center justify-between mb-2">
+          <div class="font-semibold">{{ item.user.full_name if item.user else 'Kullanıcı' }}</div>
+          <div class="text-xs text-ink-400" data-local-time="{{ item.created_at.isoformat() }}Z"></div>
+        </div>
+        <div class="text-sm text-ink-900">{{ item.content }}</div>
+      </div>
+    {% else %}
+      <div class="text-ink-400">Henüz mesaj yok.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

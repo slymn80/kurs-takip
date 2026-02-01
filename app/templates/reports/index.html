@@ -1,0 +1,282 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h2 class="font-display text-2xl">Raporlar</h2>
+    <p class="text-ink-500">Düzenli raporlarınızı PDF veya XLSX olarak indirebilirsiniz.</p>
+  </div>
+</div>
+
+<div class="space-y-8">
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-xl">Tümü</h3>
+      <div class="flex gap-2">
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='courses', format='pdf') }}">PDF</a>
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='courses', format='xlsx') }}">XLSX</a>
+      </div>
+    </div>
+    <p class="text-ink-500 text-sm">Tüm kursları kapsar.</p>
+  </div>
+
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-xl">Öğretmene Atanan Kurslar</h3>
+      <div class="flex gap-2">
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='teacher_courses', format='pdf', teacher_id=selected_teacher_id) }}">PDF</a>
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='teacher_courses', format='xlsx', teacher_id=selected_teacher_id) }}">XLSX</a>
+      </div>
+    </div>
+    <form method="get" class="filter-block mb-4 flex flex-wrap gap-2">
+      <select name="teacher_id" class="select">
+        <option value="">Tümü (tüm öğretmenler)</option>
+        {% for t in all_teachers %}
+          <option value="{{ t.id }}" {% if selected_teacher_id == t.id %}selected{% endif %}>{{ t.full_name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn-secondary">Getir</button>
+    </form>
+    <table class="table">
+      <thead>
+        <tr>
+          {% if selected_teacher_id %}
+            <th>Kurs</th><th>Durum</th><th>Başlangıç</th><th>Bitiş</th>
+          {% else %}
+            <th>Öğretmen</th><th>Kurs</th><th>Durum</th><th>Başlangıç</th><th>Bitiş</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in teacher_courses %}
+          <tr>
+            {% if selected_teacher_id %}
+              <td>{{ c.title }}</td>
+              <td>{{ c.status }}</td>
+              <td>{{ c.start_date }}</td>
+              <td>{{ c.end_date }}</td>
+            {% else %}
+              <td>{{ c.teacher.full_name if c.teacher else '-' }}</td>
+              <td>{{ c.title }}</td>
+              <td>{{ c.status }}</td>
+              <td>{{ c.start_date }}</td>
+              <td>{{ c.end_date }}</td>
+            {% endif %}
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="text-ink-400">Veri yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-xl">Kurs Listesi</h3>
+      <div class="flex gap-2">
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='courses', format='pdf', course_status=selected_course_status) }}">PDF</a>
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='courses', format='xlsx', course_status=selected_course_status) }}">XLSX</a>
+      </div>
+    </div>
+    <form method="get" class="filter-block mb-4 flex flex-wrap gap-2">
+      <select name="course_status" class="select">
+        <option value="">Tümü</option>
+        <option value="active" {% if selected_course_status == 'active' %}selected{% endif %}>Aktif</option>
+        <option value="ended" {% if selected_course_status == 'ended' %}selected{% endif %}>Kurs başarıyla sona erdi</option>
+        <option value="dropped" {% if selected_course_status == 'dropped' %}selected{% endif %}>Kurs yarıda kaldı</option>
+        <option value="cancelled" {% if selected_course_status == 'cancelled' %}selected{% endif %}>Kurs iptal edildi</option>
+        <option value="updated" {% if selected_course_status == 'updated' %}selected{% endif %}>Kurs güncellendi</option>
+        <option value="archived" {% if selected_course_status == 'archived' %}selected{% endif %}>Kurs arşivlendi (yıl sonu)</option>
+      </select>
+      <button class="btn-secondary">Getir</button>
+    </form>
+    <table class="table">
+      <thead><tr><th>Kurs</th><th>Durum</th><th>Başlangıç</th><th>Bitiş</th></tr></thead>
+      <tbody>
+        {% for c in courses %}
+          <tr>
+            <td>{{ c.title }}</td>
+            <td>{{ c.status }}</td>
+            <td>{{ c.start_date }}</td>
+            <td>{{ c.end_date }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="text-ink-400">Veri yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-xl">Kurs Bazında Öğrenci Listesi</h3>
+      <div class="flex gap-2">
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='course_students', format='pdf', course_id=selected_course_id) }}">PDF</a>
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='course_students', format='xlsx', course_id=selected_course_id) }}">XLSX</a>
+      </div>
+    </div>
+    <form method="get" class="filter-block mb-4 flex flex-wrap gap-2">
+      <select name="course_id" class="select">
+        <option value="">Tümü</option>
+        {% for c in all_courses %}
+          <option value="{{ c.id }}" {% if selected_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn-secondary">Getir</button>
+    </form>
+    <table class="table">
+      <thead><tr><th>Kurs</th><th>Öğrenci</th><th>IIN</th><th>Telefon</th></tr></thead>
+      <tbody>
+        {% for e in course_students %}
+          <tr>
+            <td>{{ e.course.title }}</td>
+            <td>{{ e.student.full_name }}</td>
+            <td>{{ e.student.iin }}</td>
+            <td>{{ e.student.phone or '-' }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="text-ink-400">Veri yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-xl">Öğretmen Listesi</h3>
+      <div class="flex gap-2">
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='teachers', format='pdf', branch=selected_branch) }}">PDF</a>
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='teachers', format='xlsx', branch=selected_branch) }}">XLSX</a>
+      </div>
+    </div>
+    <form method="get" class="filter-block mb-4 flex flex-wrap gap-2">
+      <select name="branch" class="select">
+        <option value="">Tümü</option>
+        <option value="turkish" {% if selected_branch == 'turkish' %}selected{% endif %}>Türkçe</option>
+        <option value="english" {% if selected_branch == 'english' %}selected{% endif %}>İngilizce</option>
+        <option value="kazakh" {% if selected_branch == 'kazakh' %}selected{% endif %}>Kazakça</option>
+        <option value="russian" {% if selected_branch == 'russian' %}selected{% endif %}>Rusça</option>
+        <option value="mathematics" {% if selected_branch == 'mathematics' %}selected{% endif %}>Matematik</option>
+        <option value="it" {% if selected_branch == 'it' %}selected{% endif %}>Bilişim Teknolojileri</option>
+        <option value="music" {% if selected_branch == 'music' %}selected{% endif %}>Müzik</option>
+        <option value="other" {% if selected_branch == 'other' %}selected{% endif %}>Diğer</option>
+      </select>
+      <button class="btn-secondary">Getir</button>
+    </form>
+    <table class="table">
+      <thead><tr><th>Ad</th><th>Unvan</th><th>Branş</th><th>Telefon</th></tr></thead>
+      <tbody>
+        {% for t in teachers %}
+          <tr>
+            <td>{{ t.full_name }}</td>
+            <td>{{ 'Öğretmen' if t.title == 'teacher' else 'Akademisyen' }}</td>
+            <td>{{ t.branch }}</td>
+            <td>{{ t.phone }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="text-ink-400">Veri yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-xl">Kurum Listesi</h3>
+      <div class="flex gap-2">
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='organizations', format='pdf', organization_id=selected_organization_id) }}">PDF</a>
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='organizations', format='xlsx', organization_id=selected_organization_id) }}">XLSX</a>
+      </div>
+    </div>
+    <form method="get" class="filter-block mb-4 flex flex-wrap gap-2">
+      <select name="organization_id" class="select">
+        <option value="">Tümü</option>
+        {% for o in organizations %}
+          <option value="{{ o.id }}" {% if selected_organization_id == o.id %}selected{% endif %}>{{ o.name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn-secondary">Getir</button>
+    </form>
+    <table class="table">
+      <thead><tr><th>Kurum</th><th>Sorumlu</th><th>Telefon</th><th>E-posta</th></tr></thead>
+      <tbody>
+        {% for o in organizations %}
+          <tr>
+            <td>{{ o.name }}</td>
+            <td>{{ o.responsible_person }}</td>
+            <td>{{ o.phone }}</td>
+            <td>{{ o.email }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="text-ink-400">Veri yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-xl">Biten Kurslar</h3>
+      <div class="flex gap-2">
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='ended_courses', format='pdf', teacher_id=selected_ended_teacher_id) }}">PDF</a>
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='ended_courses', format='xlsx', teacher_id=selected_ended_teacher_id) }}">XLSX</a>
+      </div>
+    </div>
+    <form method="get" class="filter-block mb-4 flex flex-wrap gap-2">
+      <select name="ended_teacher_id" class="select">
+        <option value="">Tümü</option>
+        {% for t in all_teachers %}
+          <option value="{{ t.id }}" {% if selected_ended_teacher_id == t.id %}selected{% endif %}>{{ t.full_name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn-secondary">Getir</button>
+    </form>
+    <table class="table">
+      <thead><tr><th>Kurs</th><th>Başlangıç</th><th>Bitiş</th></tr></thead>
+      <tbody>
+        {% for c in ended_courses %}
+          <tr>
+            <td>{{ c.title }}</td>
+            <td>{{ c.start_date }}</td>
+            <td>{{ c.end_date }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="3" class="text-ink-400">Veri yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-xl">Yarım Kalan Kurslar</h3>
+      <div class="flex gap-2">
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='dropped_courses', format='pdf', teacher_id=selected_dropped_teacher_id) }}">PDF</a>
+        <a class="btn-secondary" href="{{ url_for('reports.download', report_type='dropped_courses', format='xlsx', teacher_id=selected_dropped_teacher_id) }}">XLSX</a>
+      </div>
+    </div>
+    <form method="get" class="mb-4 flex flex-wrap gap-2">
+      <select name="dropped_teacher_id" class="select">
+        <option value="">Tümü</option>
+        {% for t in all_teachers %}
+          <option value="{{ t.id }}" {% if selected_dropped_teacher_id == t.id %}selected{% endif %}>{{ t.full_name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn-secondary">Getir</button>
+    </form>
+    <table class="table">
+      <thead><tr><th>Kurs</th><th>Başlangıç</th><th>Bitiş</th></tr></thead>
+      <tbody>
+        {% for c in dropped_courses %}
+          <tr>
+            <td>{{ c.title }}</td>
+            <td>{{ c.start_date }}</td>
+            <td>{{ c.end_date }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="3" class="text-ink-400">Veri yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

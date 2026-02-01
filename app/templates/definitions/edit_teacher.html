@@ -1,0 +1,38 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="max-w-xl">
+  <h2 class="font-display text-xl mb-4">Öğretmen Düzenle</h2>
+  <form method="post" class="card p-6 space-y-3">
+    {{ form.hidden_tag() }}
+    <div>
+      <label class="label">Ad Soyad</label>
+      {{ form.full_name(class_='input') }}
+    </div>
+    <div>
+      <label class="label">Öğretmen / Akademisyen</label>
+      {{ form.title(class_='select') }}
+    </div>
+    <div>
+      <label class="label">Branş</label>
+      {{ form.branch(class_='select') }}
+    </div>
+    <div>
+      <label class="label">Telefon</label>
+      {{ form.phone(class_='input') }}
+    </div>
+    <div>
+      <label class="label">E-posta</label>
+      {{ form.email(class_='input') }}
+    </div>
+    <div>
+      <label class="label">Kullanıcı (opsiyonel)</label>
+      {{ form.user_id(class_='select') }}
+    </div>
+    <div>
+      <label class="label">Not</label>
+      {{ form.notes(class_='input') }}
+    </div>
+    <button class="btn-primary">Güncelle</button>
+  </form>
+</div>
+{% endblock %}

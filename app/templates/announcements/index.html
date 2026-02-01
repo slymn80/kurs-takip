@@ -1,0 +1,40 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h2 class="font-display text-2xl">Duyurular</h2>
+    <p class="text-ink-500">Ataşelik tarafından yapılan genel duyurular.</p>
+  </div>
+</div>
+
+{% if current_user.role == 'attache' %}
+  <div class="card p-6 mb-6">
+    <form method="post" class="space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div>
+        <label class="label">Duyuru (maksimum 300 karakter)</label>
+        <textarea name="content" class="input" rows="3" maxlength="300" placeholder="Kısa bir duyuru yazın..."></textarea>
+        <div class="text-xs text-ink-400 mt-1">300 karakter sınırı vardır.</div>
+      </div>
+      <button class="btn-primary">Yayınla</button>
+    </form>
+  </div>
+{% endif %}
+
+<div class="card p-6">
+  <h3 class="font-display text-xl mb-4">Yayınlanan Duyurular</h3>
+  <div class="space-y-3">
+    {% for item in items %}
+      <div class="rounded-2xl border border-ink-100 bg-white p-4">
+        <div class="flex items-center justify-between mb-2">
+          <div class="font-semibold">{{ item.user.full_name if item.user else 'Ataşelik' }}</div>
+          <div class="text-xs text-ink-400" data-local-time="{{ item.created_at.isoformat() }}Z"></div>
+        </div>
+        <div class="text-sm text-ink-900">{{ item.content }}</div>
+      </div>
+    {% else %}
+      <div class="text-ink-400">Henüz duyuru yok.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

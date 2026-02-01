@@ -1,0 +1,43 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h2 class="font-display text-2xl">Akademik Yıl Geçisi</h2>
+    <p class="text-ink-500">Yıl sonu arşivleme ve yeni yıl hazırlığı</p>
+  </div>
+  <a href="{{ url_for('admin.settings') }}" class="btn-secondary">Ayarlar</a>
+</div>
+
+<div class="card p-6 space-y-4">
+  <div class="grid gap-3 md:grid-cols-2">
+    <div class="rounded-xl border border-ink-100 p-4">
+      <p class="text-xs uppercase tracking-wide text-ink-400">Mevcut Akademik Yıl</p>
+      <p class="text-xl font-semibold">{{ current_academic_year }}</p>
+    </div>
+    <div class="rounded-xl border border-ink-100 p-4">
+      <p class="text-xs uppercase tracking-wide text-ink-400">Yeni Akademik Yıl</p>
+      <p class="text-xl font-semibold">{{ next_academic_year }}</p>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-ink-100 p-4">
+    <p class="text-sm text-ink-500">Bu işlem aşağıdaki adımları uygular:</p>
+    <ol class="mt-3 space-y-2 text-sm text-ink-900">
+      <li>1) Yıl sonu raporlamasına temel oluşturmak için aktif kurslar arşivlenir.</li>
+      <li>2) Eski yıl kursları aktif listeden kaldırılır.</li>
+      <li>3) Yeni akademik yıl bilgisi sistem ayarlarına kaydedilir.</li>
+      <li>4) Önceki akademik yıl geçmiş kayıt olarak saklanır.</li>
+      <li>5) Yeni yıl için kurs açma ve kayıt süreçleri başlatılabilir.</li>
+      <li>6) Yönetim loglarına işlem bilgisi yazılır.</li>
+    </ol>
+    <p class="mt-3 text-xs text-ink-500">Not: Bu işlem geri alınamaz. Arşivlenen kurslar “Biten Kurslar” sayfasında görünür.</p>
+  </div>
+
+  <form method="post" class="pt-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn-primary" onclick="return confirm('Yıl sonu işlemi başlatılsın mı?')">
+      Yıl Sonu İşlemini Başlat
+    </button>
+  </form>
+</div>
+{% endblock %}

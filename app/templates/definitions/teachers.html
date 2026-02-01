@@ -1,0 +1,66 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card p-6 lg:col-span-1">
+    <h2 class="font-display text-xl mb-4">Yeni Öğretmen</h2>
+    <form method="post" class="space-y-3">
+      {{ form.hidden_tag() }}
+      <div>
+        <label class="label">Ad Soyad</label>
+        {{ form.full_name(class_='input') }}
+      </div>
+      <div>
+        <label class="label">Öğretmen / Akademisyen</label>
+        {{ form.title(class_='select') }}
+      </div>
+      <div>
+        <label class="label">Branş</label>
+        {{ form.branch(class_='select') }}
+      </div>
+      <div>
+        <label class="label">Telefon</label>
+        {{ form.phone(class_='input') }}
+      </div>
+      <div>
+        <label class="label">E-posta</label>
+        {{ form.email(class_='input') }}
+      </div>
+      <div>
+        <label class="label">Kullanıcı (opsiyonel)</label>
+        {{ form.user_id(class_='select') }}
+      </div>
+      <div>
+        <label class="label">Not</label>
+        {{ form.notes(class_='input') }}
+      </div>
+      <button class="btn-primary w-full">Kaydet</button>
+    </form>
+  </div>
+  <div class="card p-6 lg:col-span-2">
+    <h2 class="font-display text-xl mb-4">Öğretmenler</h2>
+    <table class="table">
+      {% set branch_labels = {"turkish":"Türkçe","english":"İngilizce","kazakh":"Kazakça","russian":"Rusça","mathematics":"Matematik","it":"Bilişim Teknolojileri","music":"Müzik","other":"Diğer"} %}
+      <thead><tr><th>Ad</th><th>Ünvan</th><th>Branş</th><th>Telefon</th><th></th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>{{ item.full_name }}</td>
+          <td>{{ 'Öğretmen' if item.title == 'teacher' else 'Akademisyen' }}</td>
+          <td>{{ branch_labels.get(item.branch, item.branch) }}</td>
+          <td>{{ item.phone }}</td>
+          <td class="text-right">
+            <a class="btn-secondary" href="{{ url_for('definitions.edit_teacher', teacher_id=item.id) }}">Düzenle</a>
+            {% if current_user.role == 'admin' %}
+            <form method="post" action="{{ url_for('definitions.delete_teacher', teacher_id=item.id) }}" class="inline">
+              {{ form.hidden_tag() }}
+              <button class="btn-secondary">Sil</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

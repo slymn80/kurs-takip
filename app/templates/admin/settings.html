@@ -1,0 +1,28 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<h2 class="font-display text-2xl mb-4">Sistem Ayarları</h2>
+<form method="post" class="card p-6 space-y-4 max-w-xl">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div>
+    <label class="label">WhatsApp Provider</label>
+    <select name="whatsapp_provider" class="select">
+      {% for option in ['disabled','twilio','meta'] %}
+        <option value="{{ option }}" {% if settings.get('whatsapp_provider') == option %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">n8n Webhook URL</label>
+    <input type="text" name="n8n_webhook_url" value="{{ settings.get('n8n_webhook_url','') }}" class="input">
+  </div>
+  <div>
+    <label class="label">Devamsızlık Eşik Oranı</label>
+    <input type="text" name="absence_threshold_ratio" value="{{ settings.get('absence_threshold_ratio','0.2') }}" class="input">
+  </div>
+  <button class="btn-primary">Kaydet</button>
+</form>
+<form method="post" action="{{ url_for('admin.n8n_test') }}" class="mt-4">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn-secondary">n8n Test Gönder</button>
+</form>
+{% endblock %}
