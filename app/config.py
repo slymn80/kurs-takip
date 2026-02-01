@@ -2,6 +2,7 @@ import os
 from datetime import timedelta
 
 class Config:
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///dev.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -23,3 +24,6 @@ class Config:
     META_WHATSAPP_URL = os.getenv("META_WHATSAPP_URL", "https://graph.facebook.com/v19.0")
     LOGIN_RATE_LIMIT_MAX = int(os.getenv("LOGIN_RATE_LIMIT_MAX", "5"))
     LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("LOGIN_RATE_LIMIT_WINDOW_SECONDS", "300"))
+    STUDENT_UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads", "students")
+    STUDENT_UPLOAD_MAX_BYTES = int(os.getenv("STUDENT_UPLOAD_MAX_BYTES", str(500 * 1024)))
+    MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", str(2 * 1024 * 1024)))

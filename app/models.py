@@ -73,6 +73,8 @@ class Student(db.Model):
     education_level = db.Column(db.String(40), nullable=False)
     phone = db.Column(db.String(30))
     email = db.Column(db.String(120))
+    photo_path = db.Column(db.String(255))
+    id_image_path = db.Column(db.String(255))
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=now_utc)
 

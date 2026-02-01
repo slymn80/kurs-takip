@@ -1,4 +1,5 @@
 ﻿from flask_wtf import FlaskForm
+from flask_wtf.file import FileField
 from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField, DateField, IntegerField, BooleanField, TimeField
 from wtforms.validators import DataRequired, Length, Optional, Email
 
@@ -101,6 +102,8 @@ class StudentForm(FlaskForm):
     course_id = SelectField("Kursa Kaydet (opsiyonel)", coerce=int)
     phone = StringField("Telefon", validators=[Optional(), Length(max=30)])
     email = StringField("E-posta", validators=[Optional(), Email(), Length(max=120)])
+    photo = FileField("??renci Foto?raf?")
+    id_image = FileField("Kimlik G?rseli")
     notes = TextAreaField("Not")
     submit = SubmitField("Kaydet")
 

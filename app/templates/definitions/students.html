@@ -3,7 +3,7 @@
 <div class="grid lg:grid-cols-3 gap-6">
   <div class="card p-6 lg:col-span-1">
     <h2 class="font-display text-xl mb-4">Yeni Kursiyer</h2>
-    <form method="post" class="space-y-3">
+    <form method="post" enctype="multipart/form-data" class="space-y-3">
       {{ form.hidden_tag() }}
       <div>
         <label class="label">Ad Soyad</label>
@@ -28,6 +28,16 @@
       <div>
         <label class="label">E-posta</label>
         {{ form.email(class_='input') }}
+      </div>
+      <div>
+        <label class="label">Öğrenci Fotoğrafı</label>
+        {{ form.photo(class_='input', accept='.jpg,.jpeg,.png') }}
+        <p class="text-xs text-ink-500 mt-1">JPG/PNG, en fazla {{ max_file_kb }} KB.</p>
+      </div>
+      <div>
+        <label class="label">Kimlik Görseli</label>
+        {{ form.id_image(class_='input', accept='.jpg,.jpeg,.png') }}
+        <p class="text-xs text-ink-500 mt-1">JPG/PNG, en fazla {{ max_file_kb }} KB.</p>
       </div>
       <div>
         <label class="label">Not</label>

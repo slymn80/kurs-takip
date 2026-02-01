@@ -2,7 +2,25 @@
 {% block content %}
 <div class="max-w-xl">
   <h2 class="font-display text-xl mb-4">Kursiyer Düzenle</h2>
-  <form method="post" class="card p-6 space-y-3">
+  <div class="grid md:grid-cols-2 gap-4 mb-6">
+    <div class="card p-4">
+      <h3 class="font-display text-base mb-3">Öğrenci Fotoğrafı</h3>
+      {% if item.photo_path %}
+        <img src="{{ url_for('static', filename=item.photo_path) }}" alt="Öğrenci Fotoğrafı" class="rounded-xl border border-sand-200 max-h-64 object-contain w-full">
+      {% else %}
+        <p class="text-sm text-ink-500">Henüz yüklenmedi.</p>
+      {% endif %}
+    </div>
+    <div class="card p-4">
+      <h3 class="font-display text-base mb-3">Kimlik Görseli</h3>
+      {% if item.id_image_path %}
+        <img src="{{ url_for('static', filename=item.id_image_path) }}" alt="Kimlik Görseli" class="rounded-xl border border-sand-200 max-h-64 object-contain w-full">
+      {% else %}
+        <p class="text-sm text-ink-500">Henüz yüklenmedi.</p>
+      {% endif %}
+    </div>
+  </div>
+  <form method="post" enctype="multipart/form-data" class="card p-6 space-y-3">
     {{ form.hidden_tag() }}
     <div>
       <label class="label">Ad Soyad</label>
@@ -27,6 +45,16 @@
     <div>
       <label class="label">E-posta</label>
       {{ form.email(class_='input') }}
+    </div>
+    <div>
+      <label class="label">Öğrenci Fotoğrafı (opsiyonel)</label>
+      {{ form.photo(class_='input', accept='.jpg,.jpeg,.png') }}
+      <p class="text-xs text-ink-500 mt-1">JPG/PNG, en fazla {{ max_file_kb }} KB.</p>
+    </div>
+    <div>
+      <label class="label">Kimlik Görseli (opsiyonel)</label>
+      {{ form.id_image(class_='input', accept='.jpg,.jpeg,.png') }}
+      <p class="text-xs text-ink-500 mt-1">JPG/PNG, en fazla {{ max_file_kb }} KB.</p>
     </div>
     <div>
       <label class="label">Not</label>

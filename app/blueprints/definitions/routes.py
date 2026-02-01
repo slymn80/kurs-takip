@@ -1,5 +1,8 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
+import os
+import uuid
+from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
 from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename
 from ...extensions import db
 from ...models import Organization, Location, CourseType, Teacher, User, Student, AuditLog
 from ...models import Course, Enrollment
@@ -9,6 +12,38 @@ from ...utils import serialize_json
 
 
 definitions_bp = Blueprint("definitions", __name__)
+
+ALLOWED_STUDENT_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png"}
+
+
+def _allowed_student_image(filename):
+    if not filename or "." not in filename:
+        return False
+    ext = filename.rsplit(".", 1)[1].lower()
+    return ext in ALLOWED_STUDENT_IMAGE_EXTENSIONS
+
+
+def _get_file_size(file_storage):
+    file_storage.stream.seek(0, os.SEEK_END)
+    size = file_storage.stream.tell()
+    file_storage.stream.seek(0)
+    return size
+
+
+def _save_student_upload(file_storage, upload_folder, max_bytes, label):
+    if not file_storage or not file_storage.filename:
+        return None, None
+    filename = secure_filename(file_storage.filename)
+    if not _allowed_student_image(filename):
+        return None, f"{label} için sadece JPG veya PNG dosyası yükleyin."
+    file_size = _get_file_size(file_storage)
+    if file_size > max_bytes:
+        max_kb = max_bytes // 1024
+        return None, f"{label} en fazla {max_kb} KB olabilir."
+    os.makedirs(upload_folder, exist_ok=True)
+    unique_name = f"{uuid.uuid4().hex}_{filename}"
+    file_storage.save(os.path.join(upload_folder, unique_name))
+    return f"uploads/students/{unique_name}", None
 
 
 @definitions_bp.route("/organizations", methods=["GET", "POST"])
@@ -232,16 +267,43 @@ def edit_teacher(teacher_id):
 @require_roles("teacher", "coordinator", "principal", "attache", "admin")
 def students():
     form = StudentForm()
-    form.course_id.choices = [(0, "Seçilmedi")] + [
-        (c.id, c.title) for c in Course.query.order_by(Course.created_at.desc()).all()
+    if current_user.role == "teacher":
+        courses_query = Course.query.filter(Course.teacher_user_id == current_user.id)
+    else:
+        courses_query = Course.query
+    form.course_id.choices = [(0, "Se?ilmedi")] + [
+        (c.id, c.title) for c in courses_query.order_by(Course.created_at.desc()).all()
     ]
+    max_file_kb = current_app.config["STUDENT_UPLOAD_MAX_BYTES"] // 1024
     if form.validate_on_submit():
+        upload_folder = current_app.config["STUDENT_UPLOAD_FOLDER"]
+        max_bytes = current_app.config["STUDENT_UPLOAD_MAX_BYTES"]
+        photo_path, photo_error = _save_student_upload(
+            request.files.get("photo"),
+            upload_folder,
+            max_bytes,
+            "??renci foto?raf?"
+        )
+        id_path, id_error = _save_student_upload(
+            request.files.get("id_image"),
+            upload_folder,
+            max_bytes,
+            "Kimlik g?rseli"
+        )
+        errors = [err for err in [photo_error, id_error] if err]
+        if errors:
+            for err in errors:
+                flash(err, "error")
+            items = Student.query.order_by(Student.created_at.desc()).all()
+            return render_template("definitions/students.html", form=form, items=items, max_file_kb=max_file_kb)
         student = Student(
             full_name=form.full_name.data,
             iin=form.iin.data,
             education_level=form.education_level.data,
             phone=form.phone.data,
             email=form.email.data,
+            photo_path=photo_path,
+            id_image_path=id_path,
             notes=form.notes.data
         )
         db.session.add(student)
@@ -253,7 +315,7 @@ def students():
         flash("Kursiyer eklendi.", "success")
         return redirect(url_for("definitions.students"))
     items = Student.query.order_by(Student.created_at.desc()).all()
-    return render_template("definitions/students.html", form=form, items=items)
+    return render_template("definitions/students.html", form=form, items=items, max_file_kb=max_file_kb)
 
 
 @definitions_bp.route("/students/<int:student_id>/delete", methods=["POST"])
@@ -273,18 +335,46 @@ def delete_student(student_id):
 def edit_student(student_id):
     student = Student.query.get_or_404(student_id)
     form = StudentForm(obj=student)
-    form.course_id.choices = [(0, "Seçilmedi")] + [
-        (c.id, c.title) for c in Course.query.order_by(Course.created_at.desc()).all()
+    if current_user.role == "teacher":
+        courses_query = Course.query.filter(Course.teacher_user_id == current_user.id)
+    else:
+        courses_query = Course.query
+    form.course_id.choices = [(0, "Se?ilmedi")] + [
+        (c.id, c.title) for c in courses_query.order_by(Course.created_at.desc()).all()
     ]
+    max_file_kb = current_app.config["STUDENT_UPLOAD_MAX_BYTES"] // 1024
     if form.validate_on_submit():
+        upload_folder = current_app.config["STUDENT_UPLOAD_FOLDER"]
+        max_bytes = current_app.config["STUDENT_UPLOAD_MAX_BYTES"]
+        photo_path, photo_error = _save_student_upload(
+            request.files.get("photo"),
+            upload_folder,
+            max_bytes,
+            "??renci foto?raf?"
+        )
+        id_path, id_error = _save_student_upload(
+            request.files.get("id_image"),
+            upload_folder,
+            max_bytes,
+            "Kimlik g?rseli"
+        )
+        errors = [err for err in [photo_error, id_error] if err]
+        if errors:
+            for err in errors:
+                flash(err, "error")
+            return render_template("definitions/edit_student.html", form=form, item=student, max_file_kb=max_file_kb)
         student.full_name = form.full_name.data
         student.iin = form.iin.data
         student.education_level = form.education_level.data
         student.phone = form.phone.data
         student.email = form.email.data
+        if photo_path:
+            student.photo_path = photo_path
+        if id_path:
+            student.id_image_path = id_path
         student.notes = form.notes.data
         db.session.add(AuditLog(actor_user_id=current_user.id, action="update", entity_type="student", entity_id=student.id))
         db.session.commit()
-        flash("Kursiyer güncellendi.", "success")
+        flash("Kursiyer g?ncellendi.", "success")
         return redirect(url_for("definitions.students"))
-    return render_template("definitions/edit_student.html", form=form, item=student)
+    return render_template("definitions/edit_student.html", form=form, item=student, max_file_kb=max_file_kb)
