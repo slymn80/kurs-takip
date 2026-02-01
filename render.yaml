@@ -9,8 +9,14 @@ services:
         fromDatabase:
           name: kurs-takip-db
           property: connectionString
+      - key: FLASK_APP
+        value: app.wsgi:app
       - key: SECRET_KEY
         generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: NODE_VERSION
+        value: 20.11.1
       - key: FLASK_ENV
         value: production
       - key: N8N_WEBHOOK_URL
