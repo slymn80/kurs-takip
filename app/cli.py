@@ -8,6 +8,7 @@ from .models import User, Organization, Location, CourseType, Student, Course, E
 def register_cli(app):
     app.cli.add_command(seed)
     app.cli.add_command(fix_timezones)
+    app.cli.add_command(create_test_admin)
 
 
 @click.command("seed")
@@ -83,6 +84,26 @@ def seed():
 
     db.session.commit()
     click.echo("Seed completed.")
+
+
+@click.command("create-test-admin")
+@with_appcontext
+def create_test_admin():
+    existing = User.query.filter_by(username="testadmin").first()
+    if existing:
+        click.echo("Test admin zaten var: testadmin")
+        return
+    user = User(
+        username="testadmin",
+        full_name="Test Admin",
+        role="admin",
+        password_hash=bcrypt.generate_password_hash("Test123!").decode("utf-8"),
+        must_change_password=False,
+        is_active=True
+    )
+    db.session.add(user)
+    db.session.commit()
+    click.echo("Test admin oluşturuldu: testadmin / Test123!")
 
 
 @click.command("fix-timezones")
