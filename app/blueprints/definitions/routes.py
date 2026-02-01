@@ -1,4 +1,4 @@
-import os
+﻿import os
 import uuid
 from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
 from flask_login import login_required, current_user
@@ -207,7 +207,7 @@ def edit_course_type(ct_id):
 @require_roles("coordinator", "principal", "attache", "admin")
 def teachers():
     form = TeacherForm()
-    form.user_id.choices = [(0, "Seçilmedi")] + [(u.id, f"{u.full_name} ({u.username})") for u in User.query.filter_by(role="teacher").all()]
+    form.user_id.choices = [(0, "Se\u00e7ilmedi")] + [(u.id, f"{u.full_name} ({u.username})") for u in User.query.filter_by(role="teacher").all()]
     if form.validate_on_submit():
         teacher = Teacher(
             user_id=form.user_id.data or None,
@@ -244,7 +244,7 @@ def delete_teacher(teacher_id):
 def edit_teacher(teacher_id):
     teacher = Teacher.query.get_or_404(teacher_id)
     form = TeacherForm(obj=teacher)
-    form.user_id.choices = [(0, "Seçilmedi")] + [(u.id, f"{u.full_name} ({u.username})") for u in User.query.filter_by(role="teacher").all()]
+    form.user_id.choices = [(0, "Se\u00e7ilmedi")] + [(u.id, f"{u.full_name} ({u.username})") for u in User.query.filter_by(role="teacher").all()]
     if teacher.user_id is None:
         form.user_id.data = 0
     if form.validate_on_submit():
@@ -271,7 +271,7 @@ def students():
         courses_query = Course.query.filter(Course.teacher_user_id == current_user.id)
     else:
         courses_query = Course.query
-    form.course_id.choices = [(0, "Se?ilmedi")] + [
+    form.course_id.choices = [(0, "Se\u00e7ilmedi")] + [
         (c.id, c.title) for c in courses_query.order_by(Course.created_at.desc()).all()
     ]
     max_file_kb = current_app.config["STUDENT_UPLOAD_MAX_BYTES"] // 1024
@@ -282,13 +282,13 @@ def students():
             request.files.get("photo"),
             upload_folder,
             max_bytes,
-            "??renci foto?raf?"
+            "Öğrenci fotoğrafı"
         )
         id_path, id_error = _save_student_upload(
             request.files.get("id_image"),
             upload_folder,
             max_bytes,
-            "Kimlik g?rseli"
+            "Kimlik görseli"
         )
         errors = [err for err in [photo_error, id_error] if err]
         if errors:
@@ -339,7 +339,7 @@ def edit_student(student_id):
         courses_query = Course.query.filter(Course.teacher_user_id == current_user.id)
     else:
         courses_query = Course.query
-    form.course_id.choices = [(0, "Se?ilmedi")] + [
+    form.course_id.choices = [(0, "Se\u00e7ilmedi")] + [
         (c.id, c.title) for c in courses_query.order_by(Course.created_at.desc()).all()
     ]
     max_file_kb = current_app.config["STUDENT_UPLOAD_MAX_BYTES"] // 1024
@@ -350,13 +350,13 @@ def edit_student(student_id):
             request.files.get("photo"),
             upload_folder,
             max_bytes,
-            "??renci foto?raf?"
+            "Öğrenci fotoğrafı"
         )
         id_path, id_error = _save_student_upload(
             request.files.get("id_image"),
             upload_folder,
             max_bytes,
-            "Kimlik g?rseli"
+            "Kimlik görseli"
         )
         errors = [err for err in [photo_error, id_error] if err]
         if errors:
@@ -375,6 +375,9 @@ def edit_student(student_id):
         student.notes = form.notes.data
         db.session.add(AuditLog(actor_user_id=current_user.id, action="update", entity_type="student", entity_id=student.id))
         db.session.commit()
-        flash("Kursiyer g?ncellendi.", "success")
+        flash("Kursiyer güncellendi.", "success")
         return redirect(url_for("definitions.students"))
     return render_template("definitions/edit_student.html", form=form, item=student, max_file_kb=max_file_kb)
+
+
+

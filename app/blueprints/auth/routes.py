@@ -1,6 +1,6 @@
 ﻿from datetime import datetime, timedelta
 from collections import deque
-from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
+from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, session
 from flask_login import login_user, logout_user, login_required, current_user
 from ...utils import serialize_json
 from ...extensions import db, bcrypt
@@ -36,12 +36,29 @@ def login():
 
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.is_active and bcrypt.check_password_hash(user.password_hash, form.password.data):
+            session.pop("_flashes", None)
             login_user(user)
             if user.must_change_password:
                 return redirect(url_for("auth.change_password"))
             return redirect(url_for("dashboard.index"))
         dq.append(datetime.utcnow())
-        flash("Giriş bilgileri hatalı.", "error")
+        remaining = max_attempts - len(dq)
+        if not user:
+            flash("Kullanıcı adı hatalı.", "error")
+        elif not user.is_active:
+            flash("Kullanıcı pasif.", "error")
+        else:
+            if remaining > 0:
+                flash(f"Şifre hatalı. Kalan deneme: {remaining}.", "error")
+            else:
+                flash("Çok fazla deneme. Lütfen biraz sonra tekrar deneyin.", "error")
+    elif request.method == "POST":
+        if "csrf_token" in form.errors:
+            flash("Oturum süresi doldu. Lütfen sayfayı yenileyin.", "error")
+        elif form.username.errors or form.password.errors:
+            flash("Kullanıcı adı ve şifre zorunlu.", "error")
+        else:
+            flash("Giriş başarısız. Lütfen tekrar deneyin.", "error")
     return render_template("auth/login.html", form=form)
 
 

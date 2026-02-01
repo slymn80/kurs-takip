@@ -36,7 +36,12 @@
     </div>
     <div>
       <label class="label">Kursa Kaydet (opsiyonel)</label>
-      {{ form.course_id(class_='select') }}
+      <select name="{{ form.course_id.name }}" class="select">
+        <option value="0" {% if form.course_id.data in [0, '0', None] %}selected{% endif %}>Seçilmedi</option>
+        {% for value, label in form.course_id.choices if value != 0 %}
+          <option value="{{ value }}" {% if form.course_id.data == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
     </div>
     <div>
       <label class="label">Telefon</label>

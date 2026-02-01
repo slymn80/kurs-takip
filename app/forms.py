@@ -102,8 +102,8 @@ class StudentForm(FlaskForm):
     course_id = SelectField("Kursa Kaydet (opsiyonel)", coerce=int)
     phone = StringField("Telefon", validators=[Optional(), Length(max=30)])
     email = StringField("E-posta", validators=[Optional(), Email(), Length(max=120)])
-    photo = FileField("??renci Foto?raf?")
-    id_image = FileField("Kimlik G?rseli")
+    photo = FileField("Öğrenci Fotoğrafı")
+    id_image = FileField("Kimlik Görseli")
     notes = TextAreaField("Not")
     submit = SubmitField("Kaydet")
 
@@ -145,3 +145,4 @@ class UserForm(FlaskForm):
     role = SelectField("Rol", choices=[("teacher","Teacher"),("coordinator","Coordinator"),("principal","Principal"),("attache","Attache"),("admin","Admin")])
     is_active = BooleanField("Aktif")
     submit = SubmitField("Kaydet")
+

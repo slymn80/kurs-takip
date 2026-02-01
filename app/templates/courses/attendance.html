@@ -17,9 +17,10 @@
         <td>{{ enrollment.student.full_name }}</td>
         <td>
           <select name="status_{{ enrollment.student_id }}" class="select">
-            {% for status in ['present','absent','late','excused'] %}
-              <option value="{{ status }}" {% if existing and existing.status == status %}selected{% endif %}>{{ status }}</option>
-            {% endfor %}
+            <option value="present" {% if existing and existing.status == 'present' %}selected{% endif %}>Mevcut</option>
+            <option value="absent" {% if existing and existing.status == 'absent' %}selected{% endif %}>Yok</option>
+            <option value="late" {% if existing and existing.status == 'late' %}selected{% endif %}>Geç kaldı</option>
+            <option value="excused" {% if existing and existing.status == 'excused' %}selected{% endif %}>Mazeretli</option>
           </select>
         </td>
         <td>

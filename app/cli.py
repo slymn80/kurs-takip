@@ -10,6 +10,7 @@ def register_cli(app):
     app.cli.add_command(fix_timezones)
     app.cli.add_command(create_test_admin)
     app.cli.add_command(create_test_user)
+    app.cli.add_command(seed_demo)
 
 
 @click.command("seed")
@@ -85,6 +86,152 @@ def seed():
 
     db.session.commit()
     click.echo("Seed completed.")
+
+
+@click.command("seed-demo")
+@with_appcontext
+def seed_demo():
+    admin = User.query.filter_by(username="admin").first()
+    if not admin:
+        admin = User(
+            username="admin",
+            full_name="Admin Kullanıcı",
+            role="admin",
+            password_hash=bcrypt.generate_password_hash("Admin123!").decode("utf-8"),
+            must_change_password=False,
+            is_active=True
+        )
+        db.session.add(admin)
+        db.session.flush()
+
+    teacher_users = []
+    for idx in range(1, 4):
+        username = f"teacher{idx}"
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            user = User(
+                username=username,
+                full_name=f"Öğretmen {idx}",
+                role="teacher",
+                password_hash=bcrypt.generate_password_hash(f"Teacher{idx}123!").decode("utf-8"),
+                must_change_password=False,
+                is_active=True
+            )
+            db.session.add(user)
+            db.session.flush()
+        teacher_users.append(user)
+
+    teachers = []
+    for idx, user in enumerate(teacher_users, start=1):
+        existing = Teacher.query.filter_by(user_id=user.id).first()
+        if not existing:
+            existing = Teacher(
+                user_id=user.id,
+                full_name=user.full_name,
+                title="teacher",
+                branch="mathematics",
+                phone=f"+7777000000{idx}",
+                email=f"teacher{idx}@example.com"
+            )
+            db.session.add(existing)
+        teachers.append(existing)
+
+    organizations = []
+    for idx in range(1, 4):
+        name = f"Kurum {idx}"
+        org = Organization.query.filter_by(name=name).first()
+        if not org:
+            org = Organization(
+                name=name,
+                responsible_person=f"Sorumlu {idx}",
+                phone=f"+7777111000{idx}",
+                email=f"kurum{idx}@example.com"
+            )
+            db.session.add(org)
+        organizations.append(org)
+
+    locations = []
+    for idx in range(1, 4):
+        name = f"Yer {idx}"
+        loc = Location.query.filter_by(name=name).first()
+        if not loc:
+            loc = Location(
+                name=name,
+                capacity=20 + idx,
+                has_smart_board=bool(idx % 2)
+            )
+            db.session.add(loc)
+        locations.append(loc)
+
+    course_types = []
+    for idx in range(1, 4):
+        name = f"Kurs Tipi {idx}"
+        ct = CourseType.query.filter_by(name=name).first()
+        if not ct:
+            ct = CourseType(
+                name=name,
+                course_hours=40 + idx * 10,
+                delivery_mode="in_person",
+                description=f"Kurs tipi açıklaması {idx}"
+            )
+            db.session.add(ct)
+        course_types.append(ct)
+
+    students = []
+    for idx in range(1, 4):
+        name = f"Kursiyer {idx}"
+        student = Student.query.filter_by(full_name=name).first()
+        if not student:
+            student = Student(
+                full_name=name,
+                iin=f"99010112345{idx}",
+                education_level="university",
+                phone=f"+7777222000{idx}",
+                email=f"student{idx}@example.com"
+            )
+            db.session.add(student)
+        students.append(student)
+
+    db.session.flush()
+
+    courses = []
+    for idx in range(1, 4):
+        title = f"Deneme Kursu {idx}"
+        course = Course.query.filter_by(title=title).first()
+        if not course:
+            course = Course(
+                organization_id=organizations[idx - 1].id,
+                course_type_id=course_types[idx - 1].id,
+                location_id=locations[idx - 1].id,
+                teacher_id=teachers[idx - 1].id,
+                teacher_user_id=teachers[idx - 1].user_id,
+                title=title,
+                start_date=date.today(),
+                end_date=date.today() + timedelta(days=45),
+                schedule_json={"days": ["mon", "wed"], "start_time": "10:00", "end_time": "11:30"},
+                capacity=20,
+                status="active",
+                created_by_user_id=admin.id
+            )
+            db.session.add(course)
+        courses.append(course)
+
+    db.session.flush()
+
+    for idx, course in enumerate(courses, start=1):
+        for s_idx in range(1, 4):
+            session_date = date.today() + timedelta(days=s_idx * 7)
+            existing = Session.query.filter_by(course_id=course.id, session_date=session_date).first()
+            if not existing:
+                db.session.add(Session(course_id=course.id, session_date=session_date, lesson_delivered=True))
+
+        student = students[idx - 1]
+        existing_enrollment = Enrollment.query.filter_by(course_id=course.id, student_id=student.id).first()
+        if not existing_enrollment:
+            db.session.add(Enrollment(course_id=course.id, student_id=student.id))
+
+    db.session.commit()
+    click.echo("Demo veri oluşturuldu: her tablodan en az 3 kayıt.")
 
 
 @click.command("create-test-admin")
