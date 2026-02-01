@@ -23,7 +23,7 @@ def upgrade():
         batch_op.add_column(sa.Column('email', sa.String(length=120), nullable=False, server_default=''))
 
     with op.batch_alter_table('locations') as batch_op:
-        batch_op.add_column(sa.Column('has_smart_board', sa.Boolean(), nullable=False, server_default=sa.text('0')))
+        batch_op.add_column(sa.Column('has_smart_board', sa.Boolean(), nullable=False, server_default=sa.text('false')))
 
     with op.batch_alter_table('teachers') as batch_op:
         batch_op.add_column(sa.Column('full_name', sa.String(length=120), nullable=False, server_default=''))
@@ -39,7 +39,7 @@ def upgrade():
         batch_op.alter_column('teacher_user_id', existing_type=sa.Integer(), nullable=True)
 
     with op.batch_alter_table('sessions') as batch_op:
-        batch_op.add_column(sa.Column('lesson_delivered', sa.Boolean(), nullable=False, server_default=sa.text('1')))
+        batch_op.add_column(sa.Column('lesson_delivered', sa.Boolean(), nullable=False, server_default=sa.text('true')))
 
 
 def downgrade():
