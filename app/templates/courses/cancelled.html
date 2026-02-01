@@ -2,8 +2,8 @@
 {% block content %}
 <div class="flex items-center justify-between mb-6">
   <div>
-    <h2 class="font-display text-2xl">Biten Kurslar</h2>
-    <p class="text-ink-500">Sonlandırılan kurslar</p>
+    <h2 class="font-display text-2xl">İptal Edilen Kurslar</h2>
+    <p class="text-ink-500">Yarım kalan kurslar</p>
   </div>
   <a href="{{ url_for('courses.list_courses') }}" class="btn-secondary">Aktif Kurslar</a>
 </div>
@@ -17,17 +17,7 @@
         <td>{{ item.title }}</td>
         <td>{{ item.teacher.full_name if item.teacher else '-' }}</td>
         <td>{{ item.start_date }} - {{ item.end_date }}</td>
-        <td>
-          {% if item.status == 'ended' %}
-            <span class="badge badge-success">Kurs başarıyla sona erdi</span>
-          {% elif item.status == 'cancelled' %}
-            <span class="badge badge-danger">Kurs iptal edildi</span>
-          {% elif item.status == 'archived' %}
-            <span class="badge">Kurs arşivlendi (yıl sonu)</span>
-          {% else %}
-            <span class="badge">{{ item.status }}</span>
-          {% endif %}
-        </td>
+        <td><span class="badge badge-warning">Kurs yarıda kaldı</span></td>
         <td class="text-right">
           <form method="post" action="{{ url_for('courses.restore_course', course_id=item.id) }}" class="inline" onsubmit="return openRestoreModal(this)">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -38,11 +28,12 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="5" class="text-ink-400">Biten kurs yok.</td></tr>
+      <tr><td colspan="5" class="text-ink-400">Yarım kalan kurs yok.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
 <div id="restore-modal" class="fixed inset-0 bg-ink-900/30 backdrop-blur-sm hidden z-50">
   <div class="min-h-screen flex items-center justify-center p-6">
     <div class="card p-6" style="width:360px;max-width:90vw;display:inline-block;">
@@ -72,7 +63,7 @@
   function submitRestore() {
     const pwd = document.getElementById('restore-password').value;
     if (!pwd) return;
-    restoreForm.querySelector('input[name=\"password\"]').value = pwd;
+    restoreForm.querySelector('input[name="password"]').value = pwd;
     restoreForm.submit();
   }
 </script>

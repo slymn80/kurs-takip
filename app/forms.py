@@ -80,7 +80,6 @@ class TeacherForm(FlaskForm):
     )
     phone = StringField("Telefon", validators=[DataRequired(), Length(max=30)])
     email = StringField("E-posta", validators=[DataRequired(), Email(), Length(max=120)])
-    user_id = SelectField("Kullanıcı (opsiyonel)", coerce=int)
     notes = TextAreaField("Not")
     submit = SubmitField("Kaydet")
 

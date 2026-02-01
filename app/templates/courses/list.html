@@ -6,6 +6,7 @@
     <p class="text-ink-500">Aktif kurslar</p>
   </div>
   <div class="flex items-center gap-3">
+    <a href="{{ url_for('courses.cancelled_courses') }}" class="btn-secondary">İptal Edilen Kurslar</a>
     <a href="{{ url_for('courses.completed_courses') }}" class="btn-secondary">Biten Kurslar</a>
     <a href="{{ url_for('courses.new_course') }}" class="btn-primary">Yeni Kurs Başlat</a>
   </div>

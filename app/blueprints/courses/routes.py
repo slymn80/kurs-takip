@@ -8,7 +8,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from ...extensions import db
+from ...extensions import db, bcrypt
 from ...models import Course, Organization, CourseType, Location, Teacher, User, Student, Enrollment, Session, Attendance, AuditLog
 from ...forms import CourseForm, SessionForm
 from ...security import require_roles
@@ -58,8 +58,16 @@ def list_courses():
 @login_required
 def completed_courses():
     query = _course_query_for_user()
-    items = query.filter(Course.status != "active").order_by(Course.created_at.desc()).all()
+    items = query.filter(Course.status.in_(["ended", "cancelled", "archived"])).order_by(Course.created_at.desc()).all()
     return render_template("courses/completed.html", items=items)
+
+
+@courses_bp.route("/cancelled")
+@login_required
+def cancelled_courses():
+    query = _course_query_for_user()
+    items = query.filter(Course.status == "dropped").order_by(Course.created_at.desc()).all()
+    return render_template("courses/cancelled.html", items=items)
 
 
 @courses_bp.route("/new", methods=["GET", "POST"])
@@ -208,6 +216,28 @@ def update_status(course_id):
     db.session.commit()
     flash("Kurs durumu güncellendi.", "success")
     return redirect(url_for("courses.completed_courses"))
+
+
+@courses_bp.route("/<int:course_id>/restore", methods=["POST"])
+@login_required
+@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+def restore_course(course_id):
+    course = _course_query_for_user().filter_by(id=course_id).first_or_404()
+    password = request.form.get("password", "")
+    if not bcrypt.check_password_hash(current_user.password_hash, password):
+        flash("Şifre hatalı.", "error")
+        return redirect(request.referrer or url_for("courses.completed_courses"))
+    course.status = "active"
+    db.session.add(AuditLog(
+        actor_user_id=current_user.id,
+        action="restore",
+        entity_type="course",
+        entity_id=course.id,
+        after_json=serialize_json({"status": "active"})
+    ))
+    db.session.commit()
+    flash("Kurs tekrar aktif edildi.", "success")
+    return redirect(request.referrer or url_for("courses.list_courses"))
 
 
 @courses_bp.route("/<int:course_id>/sessions/new", methods=["GET", "POST"])

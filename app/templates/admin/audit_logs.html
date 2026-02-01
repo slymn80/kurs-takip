@@ -10,7 +10,13 @@
         <td data-local-time="{{ log.created_at.isoformat() }}Z"></td>
         <td>{{ log.action }}</td>
         <td>{{ log.entity_type }}</td>
-        <td>{{ log.actor_user_id }}</td>
+        <td>
+          {% if log.actor_user_id and user_map.get(log.actor_user_id) %}
+            {{ user_map.get(log.actor_user_id).full_name }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>

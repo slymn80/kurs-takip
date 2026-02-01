@@ -207,10 +207,9 @@ def edit_course_type(ct_id):
 @require_roles("coordinator", "principal", "attache", "admin")
 def teachers():
     form = TeacherForm()
-    form.user_id.choices = [(0, "Se\u00e7ilmedi")] + [(u.id, f"{u.full_name} ({u.username})") for u in User.query.filter_by(role="teacher").all()]
     if form.validate_on_submit():
         teacher = Teacher(
-            user_id=form.user_id.data or None,
+            user_id=None,
             full_name=form.full_name.data,
             title=form.title.data,
             branch=form.branch.data,
@@ -244,11 +243,8 @@ def delete_teacher(teacher_id):
 def edit_teacher(teacher_id):
     teacher = Teacher.query.get_or_404(teacher_id)
     form = TeacherForm(obj=teacher)
-    form.user_id.choices = [(0, "Se\u00e7ilmedi")] + [(u.id, f"{u.full_name} ({u.username})") for u in User.query.filter_by(role="teacher").all()]
-    if teacher.user_id is None:
-        form.user_id.data = 0
     if form.validate_on_submit():
-        teacher.user_id = form.user_id.data or None
+        teacher.user_id = None
         teacher.full_name = form.full_name.data
         teacher.title = form.title.data
         teacher.branch = form.branch.data
