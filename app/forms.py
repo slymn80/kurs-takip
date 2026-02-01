@@ -111,6 +111,11 @@ class CourseForm(FlaskForm):
     location_id = SelectField("Yer", coerce=int)
     teacher_id = SelectField("Öğretmen", coerce=int)
     title = StringField("Başlık", validators=[DataRequired(), Length(max=200)])
+    term = SelectField(
+        "Dönem",
+        choices=[("fall", "Güz Dönemi"), ("spring", "Bahar Dönemi")],
+        validators=[DataRequired()]
+    )
     start_date = DateField("Başlangıç", validators=[DataRequired()])
     end_date = DateField("Bitiş", validators=[DataRequired()])
     capacity = IntegerField("Kapasite", validators=[Optional()])

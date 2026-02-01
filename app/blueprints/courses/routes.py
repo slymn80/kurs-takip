@@ -76,6 +76,7 @@ def new_course():
             teacher_id=form.teacher_id.data,
             teacher_user_id=teacher_user_id,
             title=form.title.data,
+            term=form.term.data,
             start_date=form.start_date.data,
             end_date=form.end_date.data,
             schedule_json=schedule,

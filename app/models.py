@@ -89,6 +89,7 @@ class Course(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
     schedule_json = db.Column(db.JSON)
+    term = db.Column(db.String(10), nullable=False, default="fall")
     capacity = db.Column(db.Integer)
     status = db.Column(db.String(20), default="active")
     created_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
