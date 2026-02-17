@@ -36,6 +36,7 @@ from ...services.placement import create_question_group
 
 
 admin_bp = Blueprint("admin", __name__)
+generation_status = None
 
 def _generate_password(length=12):
     alphabet = string.ascii_letters + string.digits + "!@#$%?"
@@ -61,7 +62,7 @@ def _set_generation_status(state, message, group_name=None):
 def _run_generation(app, count, set_active):
     with app.app_context():
         try:
-            _set_generation_status("running", "Soru ?retimi ba?lad?.", None)
+            _set_generation_status("running", "Soru üretimi başladı.", None)
             group_name = create_question_group(count=count)
             if set_active:
                 setting = SystemSetting.query.filter_by(key="placement_active_group").first()
@@ -71,7 +72,7 @@ def _run_generation(app, count, set_active):
                 else:
                     setting.value = group_name
                 db.session.commit()
-            _set_generation_status("success", f"Soru ?retimi tamamland?: {group_name} ({count} soru).", group_name)
+            _set_generation_status("success", f"Soru üretimi tamamlandı: {group_name} ({count} soru).", group_name)
         except Exception as exc:
             db.session.rollback()
             _set_generation_status("failed", f"Soru üretimi başarısız: {exc}", None)
@@ -419,6 +420,7 @@ def placement_questions():
 @login_required
 @require_roles("admin")
 def placement_management():
+    generation_status = None
     group_filter = (request.args.get("group") or "").strip()
     skill = (request.args.get("skill") or "").strip()
     difficulty = (request.args.get("difficulty") or "").strip()
@@ -450,6 +452,13 @@ def placement_management():
         return redirect(url_for("admin.placement_management"))
 
     settings = {s.key: s.value for s in SystemSetting.query.all()}
+    generation_status = None
+    raw_status = settings.get("placement_generation_status")
+    if raw_status:
+        try:
+            generation_status = json.loads(raw_status)
+        except Exception:
+            generation_status = {"state": "unknown", "message": raw_status}
     prompt_history = PlacementPromptHistory.query.order_by(PlacementPromptHistory.created_at.desc()).limit(50).all()
     active_group = settings.get("placement_active_group", "")
     selected_group = group_filter or active_group

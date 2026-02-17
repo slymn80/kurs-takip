@@ -10,10 +10,10 @@
 
 {% if generation_status %}
 <div class="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 p-4 mb-6">
-  <div class="font-semibold">Soru ?retimi Durumu</div>
+  <div class="font-semibold">Soru Üretimi Durumu</div>
   <div class="text-sm mt-1">{{ generation_status.message }}</div>
   {% if generation_status.updated_at %}
-    <div class="text-xs mt-2">G?ncelleme: {{ generation_status.updated_at }}</div>
+    <div class="text-xs mt-2">Güncelleme: {{ generation_status.updated_at }}</div>
   {% endif %}
 </div>
 {% if generation_status.state in ['running','queued'] %}
