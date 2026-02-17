@@ -1,0 +1,110 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="section-header mb-6">
+  <div>
+    <p class="section-kicker">Seviye Sınavı</p>
+    <h2 class="font-display text-2xl">Soru Onayı</h2>
+    <p class="section-subtitle">Onaylı sorular sınav havuzuna dahil edilir.</p>
+  </div>
+</div>
+
+<div class="card p-6 mb-6">
+  <div class="flex flex-wrap items-center gap-3 text-sm text-ink-500">
+    <span>Bekleyen: <strong class="text-ink-900">{{ pending_count }}</strong></span>
+    <span>Onaylı: <strong class="text-ink-900">{{ approved_count }}</strong></span>
+    <span>Reddedilen: <strong class="text-ink-900">{{ rejected_count }}</strong></span>
+  </div>
+</div>
+
+<form method="get" class="filter-card form-grid mb-6 md:grid-cols-4">
+  <div>
+    <label class="label">Durum</label>
+    <select name="status" class="select">
+      <option value="pending" {% if status == 'pending' %}selected{% endif %}>Bekleyen</option>
+      <option value="approved" {% if status == 'approved' %}selected{% endif %}>Onaylı</option>
+      <option value="rejected" {% if status == 'rejected' %}selected{% endif %}>Reddedilen</option>
+      <option value="all" {% if status == 'all' %}selected{% endif %}>Tümü</option>
+    </select>
+  </div>
+  <div>
+    <label class="label">Beceri</label>
+    <select name="skill" class="select">
+      <option value="">Tümü</option>
+      <option value="reading" {% if skill == 'reading' %}selected{% endif %}>Okuma</option>
+      <option value="grammar" {% if skill == 'grammar' %}selected{% endif %}>Dilbilgisi</option>
+      <option value="vocab" {% if skill == 'vocab' %}selected{% endif %}>Kelime</option>
+      <option value="usage" {% if skill == 'usage' %}selected{% endif %}>İletişim</option>
+    </select>
+  </div>
+  <div>
+    <label class="label">Seviye</label>
+    <select name="difficulty" class="select">
+      <option value="">Tümü</option>
+      {% for level in ['A1','A2','B1','B2','C1'] %}
+        <option value="{{ level }}" {% if difficulty == level %}selected{% endif %}>{{ level }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Arama</label>
+    <input type="text" name="q" class="input" value="{{ search }}" placeholder="Soru metni">
+  </div>
+  <div class="md:col-span-4 flex items-end gap-2">
+    <button class="btn-primary">Filtrele</button>
+  </div>
+</form>
+
+<div class="space-y-4">
+  {% for item in items %}
+    <div class="card p-5">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <div class="text-xs uppercase tracking-wide text-ink-400">{{ item.skill }} · {{ item.difficulty }}</div>
+          <div class="text-base text-ink-900 mt-1">{{ item.prompt }}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          {% if item.is_approved %}
+            <span class="badge badge-success">Onaylı</span>
+          {% elif item.is_active %}
+            <span class="badge badge-warning">Bekliyor</span>
+          {% else %}
+            <span class="badge badge-muted">Reddedildi</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="mt-4 grid gap-2">
+        {% for opt in item.options %}
+          <div class="rounded-lg border border-ink-100 px-3 py-2 text-sm {% if loop.index0 == item.correct_index %}bg-emerald-50 border-emerald-200 text-emerald-900{% endif %}">
+            {{ opt }}
+          </div>
+        {% endfor %}
+      </div>
+      {% if item.explanation %}
+        <div class="mt-3 text-sm text-ink-600">Açıklama: {{ item.explanation }}</div>
+      {% endif %}
+      <div class="mt-4 flex items-center gap-2">
+        {% if not item.is_approved and item.is_active %}
+          <form method="post" action="{{ url_for('admin.approve_placement_question', question_id=item.id, status=status) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn-primary btn-sm">Onayla</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.reject_placement_question', question_id=item.id, status=status) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn-secondary btn-sm">Reddet</button>
+          </form>
+        {% elif item.is_approved and item.is_active %}
+          <form method="post" action="{{ url_for('admin.deactivate_placement_question', question_id=item.id, status=status) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn-secondary btn-sm">Pasif Yap</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <div class="card p-6 text-ink-500">Kayıt bulunmuyor.</div>
+  {% endfor %}
+</div>
+
+<script>
+</script>
+{% endblock %}

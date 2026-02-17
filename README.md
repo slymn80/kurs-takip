@@ -90,3 +90,16 @@ flask seed
 - `absence_threshold_ratio` sistem ayarı ile devamsızlık eşiği belirlenir (varsayılan 0.2).
 - Duyurular sadece Ataşe tarafından yayınlanır.
 - Raporlarda zamanlar kullanıcı cihazının yerel saatine göre gösterilir.
+
+## API Kimlik Doğrulama
+API uçları artık Bearer token ile çalışır.
+
+Token oluşturma:
+```powershell
+flask create-api-token --username admin --name "integration"
+```
+
+Kullanım:
+```
+Authorization: Bearer <TOKEN>
+```

@@ -1,0 +1,58 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="section-header mb-6">
+  <div>
+    <p class="section-kicker">Raporlar</p>
+    <h2 class="font-display text-2xl">Sertifika Yönetimi</h2>
+    <p class="section-subtitle">Biten kurslar için sertifika üret ve yazdır.</p>
+  </div>
+</div>
+
+<form method="get" class="filter-card form-grid mb-6 md:grid-cols-3">
+  <div>
+    <label class="label">Kurs</label>
+    <select name="course_id" class="select">
+      <option value="">Tümü</option>
+      {% for c in courses %}
+        <option value="{{ c.id }}" {% if selected_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Arama (Ad / IIN)</label>
+    <input type="text" name="q" class="input" value="{{ search }}">
+  </div>
+  <div class="flex items-end">
+    <button class="btn-primary">Getir</button>
+  </div>
+</form>
+
+<div class="card p-6">
+  <table class="table">
+    <thead><tr><th>Kursiyer</th><th>Kurs</th><th>IIN</th><th>Durum</th><th></th></tr></thead>
+    <tbody>
+      {% for e in enrollments %}
+        {% set cert = cert_map.get(e.id) %}
+        <tr>
+          <td>{{ e.student.full_name }}</td>
+          <td>{{ e.course.title }}</td>
+          <td>{{ e.student.iin }}</td>
+          <td>{% if cert %}Üretildi{% else %}Bekliyor{% endif %}</td>
+          <td class="text-right">
+            {% if cert %}
+              <a class="btn-secondary btn-sm" href="{{ url_for('reports.certificate_pdf', certificate_id=cert.id) }}">PDF</a>
+            {% else %}
+              <form method="post" action="{{ url_for('reports.issue_certificate', enrollment_id=e.id) }}" class="inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn-primary btn-sm">Sertifika Üret</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="text-ink-400">Uygun kursiyer bulunamadı.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="card p-6">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="font-display text-xl">Benim Kursiyerlerim</h2>
+  </div>
+  <form method="get" class="mb-4">
+    <label class="label">Kurs</label>
+    <select name="course_id" class="select" onchange="this.form.submit()">
+      <option value="" {% if not selected_course_id %}selected{% endif %}>Tümü</option>
+      {% for c in courses %}
+        <option value="{{ c.id }}" {% if selected_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  <table class="table">
+    <thead><tr><th>Kurs</th><th>Ad</th><th>IIN/TC</th><th>Eğitim</th><th>Telefon</th><th></th></tr></thead>
+    <tbody>
+      {% for enrollment, student, course in rows %}
+      <tr>
+        <td>{{ course.title }}</td>
+        <td>{{ student.full_name }}</td>
+        <td>{{ student.iin }}</td>
+        <td>{{ student.education_level }}</td>
+        <td>{{ student.phone }}</td>
+        <td class="text-right">
+          <a class="btn-secondary" href="{{ url_for('courses.student_detail', student_id=student.id) }}">Öğrenci Detayı</a>
+          <a class="btn-ghost ml-2" href="{{ url_for('courses.course_detail', course_id=course.id) }}">Kurs Detayı</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="text-ink-400">Kursiyer yok.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -74,6 +74,24 @@ def organizations():
 @require_roles("admin")
 def delete_organization(org_id):
     org = Organization.query.get_or_404(org_id)
+    active_course = Course.query.filter_by(organization_id=org.id, status="active").first()
+    if active_course:
+        flash("Bu kurum aktif kurslarda kullanılıyor. Önce aktif kursları kaldırın.", "error")
+        return redirect(url_for("definitions.organizations"))
+    related_courses = Course.query.filter_by(organization_id=org.id).all()
+    for course in related_courses:
+        course.organization_name_cached = org.name
+        course.organization_id = None
+        db.session.add(course)
+    db.session.add(AuditLog(
+        actor_user_id=current_user.id,
+        actor_name_cached=current_user.full_name,
+        actor_username_cached=current_user.username,
+        action="delete",
+        entity_type="organization",
+        entity_id=org.id,
+        after_json=serialize_json({"name": org.name})
+    ))
     db.session.delete(org)
     db.session.commit()
     flash("Kurum silindi.", "success")
@@ -127,6 +145,24 @@ def locations():
 @require_roles("admin")
 def delete_location(loc_id):
     loc = Location.query.get_or_404(loc_id)
+    active_course = Course.query.filter_by(location_id=loc.id, status="active").first()
+    if active_course:
+        flash("Bu yer aktif kurslarda kullanılıyor. Önce aktif kursları kaldırın.", "error")
+        return redirect(url_for("definitions.locations"))
+    related_courses = Course.query.filter_by(location_id=loc.id).all()
+    for course in related_courses:
+        course.location_name_cached = loc.name
+        course.location_id = None
+        db.session.add(course)
+    db.session.add(AuditLog(
+        actor_user_id=current_user.id,
+        actor_name_cached=current_user.full_name,
+        actor_username_cached=current_user.username,
+        action="delete",
+        entity_type="location",
+        entity_id=loc.id,
+        after_json=serialize_json({"name": loc.name})
+    ))
     db.session.delete(loc)
     db.session.commit()
     flash("Yer silindi.", "success")
@@ -178,6 +214,24 @@ def course_types():
 @require_roles("admin")
 def delete_course_type(ct_id):
     ct = CourseType.query.get_or_404(ct_id)
+    active_course = Course.query.filter_by(course_type_id=ct.id, status="active").first()
+    if active_course:
+        flash("Bu kurs tipi aktif kurslarda kullanılıyor. Önce aktif kursları kaldırın.", "error")
+        return redirect(url_for("definitions.course_types"))
+    related_courses = Course.query.filter_by(course_type_id=ct.id).all()
+    for course in related_courses:
+        course.course_type_name_cached = ct.name
+        course.course_type_id = None
+        db.session.add(course)
+    db.session.add(AuditLog(
+        actor_user_id=current_user.id,
+        actor_name_cached=current_user.full_name,
+        actor_username_cached=current_user.username,
+        action="delete",
+        entity_type="course_type",
+        entity_id=ct.id,
+        after_json=serialize_json({"name": ct.name})
+    ))
     db.session.delete(ct)
     db.session.commit()
     flash("Kurs tipi silindi.", "success")
@@ -207,14 +261,40 @@ def edit_course_type(ct_id):
 @require_roles("coordinator", "principal", "attache", "admin")
 def teachers():
     form = TeacherForm()
+    teacher_users = User.query.filter_by(role="teacher").order_by(User.full_name).all()
+    linked_user_ids = {t.user_id for t in Teacher.query.filter(Teacher.user_id.isnot(None)).all()}
+    available_users = [u for u in teacher_users if u.id not in linked_user_ids]
+    form.user_id.choices = [(0, "Seçilmedi")] + [(u.id, f"{u.full_name} ({u.username})") for u in available_users]
     if form.validate_on_submit():
+        selected_user = User.query.get(form.user_id.data) if form.user_id.data else None
+        if not selected_user:
+            flash("Lütfen öğretmen rolündeki kullanıcıyı seçin.", "error")
+            return redirect(url_for("definitions.teachers"))
+        if Teacher.query.filter_by(user_id=selected_user.id).first():
+            flash("Bu kullanıcı için öğretmen profili zaten oluşturulmuş.", "error")
+            return redirect(url_for("definitions.teachers"))
+        identity_number = (form.identity_number.data or "").strip() or selected_user.identity_number
+        if not identity_number:
+            flash("T.C./IIN bilgisi zorunludur.", "error")
+            return redirect(url_for("definitions.teachers"))
+        if identity_number:
+            existing_teacher = Teacher.query.filter_by(identity_number=identity_number).first()
+            if existing_teacher:
+                flash("Bu T.C./IIN ile kayıtlı bir öğretmen zaten var.", "error")
+                return redirect(url_for("definitions.teachers"))
+        phone_value = (form.phone.data or "").strip() or (selected_user.phone or "")
+        email_value = (form.email.data or "").strip() or (selected_user.email or "")
+        if not phone_value or not email_value:
+            flash("Telefon ve e-posta bilgisi zorunludur.", "error")
+            return redirect(url_for("definitions.teachers"))
         teacher = Teacher(
-            user_id=None,
-            full_name=form.full_name.data,
+            user_id=selected_user.id,
+            full_name=selected_user.full_name,
+            identity_number=identity_number,
             title=form.title.data,
             branch=form.branch.data,
-            phone=form.phone.data,
-            email=form.email.data,
+            phone=phone_value,
+            email=email_value,
             notes=form.notes.data
         )
         db.session.add(teacher)
@@ -223,7 +303,13 @@ def teachers():
         flash("Öğretmen profili eklendi.", "success")
         return redirect(url_for("definitions.teachers"))
     items = Teacher.query.all()
-    return render_template("definitions/teachers.html", form=form, items=items)
+    return render_template(
+        "definitions/teachers.html",
+        form=form,
+        items=items,
+        available_users=available_users,
+        selected_user_id=form.user_id.data or 0
+    )
 
 
 @definitions_bp.route("/teachers/<int:teacher_id>/delete", methods=["POST"])
@@ -231,6 +317,17 @@ def teachers():
 @require_roles("admin")
 def delete_teacher(teacher_id):
     teacher = Teacher.query.get_or_404(teacher_id)
+    active_course = Course.query.filter_by(teacher_id=teacher.id, status="active").first()
+    if active_course:
+        flash("Bu öğretmen aktif kurslara atanmış. Önce aktif kurslardan öğretmeni kaldırın.", "error")
+        return redirect(url_for("definitions.teachers"))
+
+    affected_courses = Course.query.filter_by(teacher_id=teacher.id).all()
+    for course in affected_courses:
+        course.teacher_name_cached = teacher.full_name
+        course.teacher_id = None
+        course.teacher_user_id = None
+        db.session.add(course)
     db.session.delete(teacher)
     db.session.commit()
     flash("Öğretmen profili silindi.", "success")
@@ -243,24 +340,55 @@ def delete_teacher(teacher_id):
 def edit_teacher(teacher_id):
     teacher = Teacher.query.get_or_404(teacher_id)
     form = TeacherForm(obj=teacher)
+    teacher_users = User.query.filter_by(role="teacher").order_by(User.full_name).all()
+    linked_user_ids = {t.user_id for t in Teacher.query.filter(Teacher.user_id.isnot(None), Teacher.id != teacher.id).all()}
+    available_users = [u for u in teacher_users if u.id not in linked_user_ids]
+    form.user_id.choices = [(0, "Seçilmedi")] + [(u.id, f"{u.full_name} ({u.username})") for u in available_users]
+    form.user_id.data = teacher.user_id or 0
     if form.validate_on_submit():
-        teacher.user_id = None
-        teacher.full_name = form.full_name.data
+        selected_user = User.query.get(form.user_id.data) if form.user_id.data else None
+        if selected_user:
+            teacher.user_id = selected_user.id
+            teacher.full_name = selected_user.full_name
+        elif not form.full_name.data:
+            flash("Ad soyad boş olamaz.", "error")
+            return render_template("definitions/edit_teacher.html", form=form, item=teacher)
+        identity_number = (form.identity_number.data or "").strip() or (selected_user.identity_number if selected_user else None)
+        if not identity_number:
+            flash("T.C./IIN bilgisi zorunludur.", "error")
+            return render_template("definitions/edit_teacher.html", form=form, item=teacher)
+        if identity_number:
+            existing_teacher = Teacher.query.filter_by(identity_number=identity_number).first()
+            if existing_teacher and existing_teacher.id != teacher.id:
+                flash("Bu T.C./IIN ile kayıtlı başka bir öğretmen var.", "error")
+                return render_template("definitions/edit_teacher.html", form=form, item=teacher)
+        teacher.identity_number = identity_number
         teacher.title = form.title.data
         teacher.branch = form.branch.data
-        teacher.phone = form.phone.data
-        teacher.email = form.email.data
+        phone_value = (form.phone.data or "").strip() or (selected_user.phone if selected_user else teacher.phone)
+        email_value = (form.email.data or "").strip() or (selected_user.email if selected_user else teacher.email)
+        if not phone_value or not email_value:
+            flash("Telefon ve e-posta bilgisi zorunludur.", "error")
+            return render_template("definitions/edit_teacher.html", form=form, item=teacher)
+        teacher.phone = phone_value
+        teacher.email = email_value
         teacher.notes = form.notes.data
         db.session.add(AuditLog(actor_user_id=current_user.id, action="update", entity_type="teacher", entity_id=teacher.id))
         db.session.commit()
         flash("Öğretmen profili güncellendi.", "success")
         return redirect(url_for("definitions.teachers"))
-    return render_template("definitions/edit_teacher.html", form=form, item=teacher)
+    return render_template(
+        "definitions/edit_teacher.html",
+        form=form,
+        item=teacher,
+        available_users=available_users,
+        selected_user_id=form.user_id.data or 0
+    )
 
 
 @definitions_bp.route("/students", methods=["GET", "POST"])
 @login_required
-@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+@require_roles("coordinator", "principal", "attache", "admin")
 def students():
     form = StudentForm()
     if current_user.role == "teacher":
@@ -272,6 +400,11 @@ def students():
     ]
     max_file_kb = current_app.config["STUDENT_UPLOAD_MAX_BYTES"] // 1024
     if form.validate_on_submit():
+        existing_student = Student.query.filter_by(iin=form.iin.data).first()
+        if existing_student:
+            flash("Bu IIN/TC ile kayıtlı bir kursiyer zaten var.", "error")
+            items = Student.query.filter(Student.is_active == True).order_by(Student.created_at.desc()).all()
+            return render_template("definitions/students.html", form=form, items=items, max_file_kb=max_file_kb)
         upload_folder = current_app.config["STUDENT_UPLOAD_FOLDER"]
         max_bytes = current_app.config["STUDENT_UPLOAD_MAX_BYTES"]
         photo_path, photo_error = _save_student_upload(
@@ -290,7 +423,7 @@ def students():
         if errors:
             for err in errors:
                 flash(err, "error")
-            items = Student.query.order_by(Student.created_at.desc()).all()
+            items = Student.query.filter(Student.is_active == True).order_by(Student.created_at.desc()).all()
             return render_template("definitions/students.html", form=form, items=items, max_file_kb=max_file_kb)
         student = Student(
             full_name=form.full_name.data,
@@ -310,7 +443,7 @@ def students():
         db.session.commit()
         flash("Kursiyer eklendi.", "success")
         return redirect(url_for("definitions.students"))
-    items = Student.query.order_by(Student.created_at.desc()).all()
+    items = Student.query.filter(Student.is_active == True).order_by(Student.created_at.desc()).all()
     return render_template("definitions/students.html", form=form, items=items, max_file_kb=max_file_kb)
 
 
@@ -319,15 +452,26 @@ def students():
 @require_roles("admin")
 def delete_student(student_id):
     student = Student.query.get_or_404(student_id)
-    db.session.delete(student)
+    active_course = (
+        db.session.query(Course)
+        .join(Enrollment, Enrollment.course_id == Course.id)
+        .filter(Enrollment.student_id == student.id, Enrollment.status == "active", Course.status == "active")
+        .first()
+    )
+    if active_course:
+        flash("Bu kursiyer aktif kurslara kayıtlı. Önce aktif kayıtları kaldırın.", "error")
+        return redirect(url_for("definitions.students"))
+
+    student.is_active = False
+    db.session.add(student)
     db.session.commit()
-    flash("Kursiyer silindi.", "success")
+    flash("Kursiyer pasif hale getirildi.", "success")
     return redirect(url_for("definitions.students"))
 
 
 @definitions_bp.route("/students/<int:student_id>/edit", methods=["GET", "POST"])
 @login_required
-@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+@require_roles("coordinator", "principal", "attache", "admin")
 def edit_student(student_id):
     student = Student.query.get_or_404(student_id)
     form = StudentForm(obj=student)
@@ -340,6 +484,10 @@ def edit_student(student_id):
     ]
     max_file_kb = current_app.config["STUDENT_UPLOAD_MAX_BYTES"] // 1024
     if form.validate_on_submit():
+        existing_student = Student.query.filter_by(iin=form.iin.data).first()
+        if existing_student and existing_student.id != student.id:
+            flash("Bu IIN/TC ile kayıtlı başka bir kursiyer var.", "error")
+            return render_template("definitions/edit_student.html", form=form, item=student, max_file_kb=max_file_kb)
         upload_folder = current_app.config["STUDENT_UPLOAD_FOLDER"]
         max_bytes = current_app.config["STUDENT_UPLOAD_MAX_BYTES"]
         photo_path, photo_error = _save_student_upload(

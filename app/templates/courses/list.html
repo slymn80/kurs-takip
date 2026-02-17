@@ -6,34 +6,52 @@
     <p class="text-ink-500">Aktif kurslar</p>
   </div>
   <div class="flex items-center gap-3">
-    <a href="{{ url_for('courses.cancelled_courses') }}" class="btn-secondary">İptal Edilen Kurslar</a>
-    <a href="{{ url_for('courses.completed_courses') }}" class="btn-secondary">Biten Kurslar</a>
-    <a href="{{ url_for('courses.new_course') }}" class="btn-primary">Yeni Kurs Başlat</a>
+    <a href="{{ url_for('courses.cancelled_courses') }}" class="btn-secondary"><span class="btn-icon">⛔</span>İptal Edilen Kurslar</a>
+    <a href="{{ url_for('courses.completed_courses') }}" class="btn-secondary"><span class="btn-icon">✅</span>Biten Kurslar</a>
+    {% if current_user.role in ['coordinator','principal','attache','admin'] %}
+      <a href="{{ url_for('courses.new_course') }}" class="btn-primary"><span class="btn-icon">＋</span>Yeni Kurs Başlat</a>
+    {% endif %}
   </div>
 </div>
 
 <div class="card p-6">
   <table class="table">
-    <thead><tr><th>Başlık</th><th>Öğretmen</th><th>Tarih</th><th>Durum</th><th></th></tr></thead>
+    <thead><tr><th>Başlık</th><th>Öğretmen</th><th>Tarih</th><th>Durum</th><th class="text-right">İşlemler</th></tr></thead>
     <tbody>
       {% for item in items %}
       <tr>
         <td>{{ item.title }}</td>
-        <td>{{ item.teacher.full_name if item.teacher else '-' }}</td>
+        <td>{{ item.teacher.full_name if item.teacher else (item.teacher_name_cached or '-') }}</td>
         <td>{{ item.start_date }} - {{ item.end_date }}</td>
         <td><span class="badge badge-success">{{ item.status }}</span></td>
         <td class="text-right">
-          <form method="post" action="{{ url_for('courses.update_status', course_id=item.id) }}" class="inline-flex gap-2">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <select name="status" class="select">
-              <option value="active" selected>Kurs devam ediyor</option>
-              <option value="ended">Kurs başarıyla sona erdi</option>
-              <option value="cancelled">Kurs iptal edildi</option>
-              <option value="archived">Kurs arşivlendi (yıl sonu)</option>
-            </select>
-            <button class="btn-secondary">Kaydet</button>
-          </form>
-          <a class="btn-secondary ml-2" href="{{ url_for('courses.course_detail', course_id=item.id) }}">Detay</a>
+          <div class="flex flex-col items-end gap-2">
+            {% if current_user.role == 'admin' %}
+              <form method="post" action="{{ url_for('courses.update_status', course_id=item.id) }}" class="inline-flex items-center gap-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <select name="status" class="select">
+                  <option value="active" selected>Kurs devam ediyor</option>
+                  <option value="ended">Kurs başarıyla sona erdi</option>
+                  <option value="cancelled">Kurs iptal edildi</option>
+                  <option value="archived">Kurs arşivlendi (yıl sonu)</option>
+                </select>
+                <button class="btn-secondary"><span class="btn-icon">💾</span>Kaydet</button>
+              </form>
+            {% endif %}
+            <div class="inline-flex flex-wrap items-center justify-end gap-2">
+              <a class="btn-ghost btn-sm" href="{{ url_for('courses.course_detail', course_id=item.id) }}"><span class="btn-icon">🔎</span>Detay</a>
+              {% if current_user.role in ['coordinator','principal','attache','admin'] %}
+                <a class="btn-secondary btn-sm" href="{{ url_for('courses.edit_course', course_id=item.id) }}">Düzenle</a>
+                {% if current_user.role == 'admin' %}
+                  <form method="post" action="{{ url_for('courses.delete_course', course_id=item.id) }}" class="inline-flex items-center gap-2 js-delete-course">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="password" value="">
+                    <button class="btn-danger btn-sm" type="submit">Sil</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
         </td>
       </tr>
       {% else %}
@@ -42,4 +60,59 @@
     </tbody>
   </table>
 </div>
+
+<div id="deleteCourseModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal-card">
+    <h3 class="font-display text-xl mb-2">Kurs Sil</h3>
+    <p class="text-ink-500 text-sm mb-4">Bu işlem geri alınamaz ve ilgili oturum/kayıtlar silinir.</p>
+    <label class="label mb-2">Şifre</label>
+    <input id="deleteCoursePassword" type="password" class="input w-full mb-4" placeholder="Şifre">
+    <div class="flex items-center justify-end gap-2">
+      <button type="button" class="btn-secondary btn-sm" id="deleteCourseCancel">İptal</button>
+      <button type="button" class="btn-danger btn-sm" id="deleteCourseConfirm">Sil</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById('deleteCourseModal');
+  const passwordInput = document.getElementById('deleteCoursePassword');
+  const cancelBtn = document.getElementById('deleteCourseCancel');
+  const confirmBtn = document.getElementById('deleteCourseConfirm');
+  let activeForm = null;
+
+  const closeModal = () => {
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    passwordInput.value = '';
+    activeForm = null;
+  };
+
+  document.querySelectorAll('.js-delete-course').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      activeForm = form;
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+      passwordInput.focus();
+    });
+  });
+
+  cancelBtn.addEventListener('click', closeModal);
+
+  confirmBtn.addEventListener('click', () => {
+    if (!activeForm) return;
+    const pwd = passwordInput.value.trim();
+    if (!pwd) {
+      passwordInput.focus();
+      return;
+    }
+    activeForm.querySelector('input[name=\"password\"]').value = pwd;
+    activeForm.submit();
+  });
+
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) closeModal();
+  });
+</script>
 {% endblock %}

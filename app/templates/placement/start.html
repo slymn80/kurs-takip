@@ -1,0 +1,29 @@
+﻿{% extends 'layout.html' %}
+{% block auth %}
+<div class="min-h-screen flex items-center justify-center auth-shell p-6">
+  <div class="w-full max-w-xl card p-8">
+    <h1 class="font-display text-3xl mb-2">Sınava Başla</h1>
+    <p class="text-ink-500 mb-6">Toplam 30 soru, süre sınırı yok. Lütfen dikkatle cevaplayın.</p>
+    <div class="rounded-xl border border-ink-100 bg-ink-50 p-4 text-sm text-ink-600 mb-6">
+      Aday: {{ candidate.full_name }} · IIN: {{ candidate.iin }}
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="space-y-2 mb-4">
+          {% for category, message in messages %}
+            <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn-primary w-full">Sınavı Başlat</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

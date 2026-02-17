@@ -58,7 +58,9 @@ class CourseTypeForm(FlaskForm):
 
 
 class TeacherForm(FlaskForm):
-    full_name = StringField("Ad Soyad", validators=[DataRequired(), Length(max=120)])
+    user_id = SelectField("Kullanıcı", coerce=int)
+    full_name = StringField("Ad Soyad", validators=[Optional(), Length(max=120)])
+    identity_number = StringField("T.C. / IIN", validators=[Optional(), Length(max=20)])
     title = SelectField(
         "Öğretmen / Akademisyen",
         choices=[("teacher", "Öğretmen"), ("academician", "Akademisyen")],
@@ -78,8 +80,8 @@ class TeacherForm(FlaskForm):
         ],
         validators=[DataRequired()]
     )
-    phone = StringField("Telefon", validators=[DataRequired(), Length(max=30)])
-    email = StringField("E-posta", validators=[DataRequired(), Email(), Length(max=120)])
+    phone = StringField("Telefon", validators=[Optional(), Length(max=30)])
+    email = StringField("E-posta", validators=[Optional(), Email(), Length(max=120)])
     notes = TextAreaField("Not")
     submit = SubmitField("Kaydet")
 
@@ -107,11 +109,38 @@ class StudentForm(FlaskForm):
     submit = SubmitField("Kaydet")
 
 
+class PreRegistrationForm(FlaskForm):
+    full_name = StringField("Ad Soyad", validators=[DataRequired(), Length(max=120)])
+    iin = StringField("IIN", validators=[DataRequired(), Length(max=20)])
+    education_level = SelectField(
+        "Eğitim Durumu",
+        choices=[
+            ("primary", "İlkokul"),
+            ("middle", "Ortaokul"),
+            ("high", "Lise"),
+            ("university", "Üniversite"),
+            ("other", "Diğer")
+        ],
+        validators=[DataRequired()]
+    )
+    course_level = SelectField(
+        "Kurs Seviyesi",
+        choices=[("A1", "A1"), ("A2", "A2"), ("B1", "B1"), ("B2", "B2"), ("C1", "C1")],
+        validators=[DataRequired()]
+    )
+    phone = StringField("Telefon", validators=[DataRequired(), Length(max=30)])
+    email = StringField("E-posta", validators=[DataRequired(), Email(), Length(max=120)])
+    photo = FileField("Öğrenci Fotoğrafı")
+    id_image = FileField("Kimlik Görseli")
+    notes = TextAreaField("Not")
+    submit = SubmitField("Ön Kayıt Gönder")
+
+
 class CourseForm(FlaskForm):
     organization_id = SelectField("Kurum", coerce=int)
     course_type_id = SelectField("Kurs Tipi", coerce=int)
     location_id = SelectField("Yer", coerce=int)
-    teacher_id = SelectField("Öğretmen", coerce=int)
+    teacher_user_id = SelectField("Öğretmen", coerce=int)
     title = StringField("Başlık", validators=[DataRequired(), Length(max=200)])
     term = SelectField(
         "Dönem",
@@ -139,6 +168,7 @@ class SessionForm(FlaskForm):
 class UserForm(FlaskForm):
     username = StringField("Kullanıcı Adı", validators=[DataRequired(), Length(max=80)])
     full_name = StringField("Ad Soyad", validators=[DataRequired(), Length(max=120)])
+    identity_number = StringField("T.C. / IIN", validators=[Optional(), Length(max=20)])
     phone = StringField("Telefon", validators=[Optional(), Length(max=30)])
     email = StringField("E-posta", validators=[Optional(), Email(), Length(max=120)])
     role = SelectField("Rol", choices=[("teacher","Teacher"),("coordinator","Coordinator"),("principal","Principal"),("attache","Attache"),("admin","Admin")])

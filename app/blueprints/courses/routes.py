@@ -1,7 +1,7 @@
-import io
+﻿import io
 import os
 from datetime import datetime
-from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file
+from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file, abort
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_, func
 from reportlab.lib.pagesizes import A4
@@ -70,27 +70,80 @@ def cancelled_courses():
     return render_template("courses/cancelled.html", items=items)
 
 
-@courses_bp.route("/new", methods=["GET", "POST"])
+@courses_bp.route("/my-students")
+@login_required
+@require_roles("teacher")
+def my_students():
+    teacher = Teacher.query.filter_by(user_id=current_user.id).first()
+    course_filters = [Course.teacher_user_id == current_user.id]
+    if teacher:
+        course_filters = [or_(Course.teacher_id == teacher.id, Course.teacher_user_id == current_user.id)]
+
+    allowed_courses = (
+        Course.query
+        .filter(*course_filters)
+        .order_by(Course.created_at.desc())
+        .all()
+    )
+    allowed_course_ids = {c.id for c in allowed_courses}
+    selected_course_id = request.args.get("course_id", type=int)
+    if selected_course_id and selected_course_id not in allowed_course_ids:
+        selected_course_id = None
+
+    rows = (
+        db.session.query(Enrollment, Student, Course)
+        .join(Student, Enrollment.student_id == Student.id)
+        .join(Course, Enrollment.course_id == Course.id)
+        .filter(*course_filters)
+        .filter(Course.id == selected_course_id if selected_course_id else True)
+        .filter(Enrollment.status == "active")
+        .order_by(Student.full_name.asc(), Course.title.asc())
+        .all()
+    )
+    return render_template(
+        "courses/my_students.html",
+        rows=rows,
+        courses=allowed_courses,
+        selected_course_id=selected_course_id
+    )
+
+
+@courses_bp.route("/students/<int:student_id>")
 @login_required
 @require_roles("teacher", "coordinator", "principal", "attache", "admin")
+def student_detail(student_id):
+    if current_user.role == "teacher":
+        allowed_course_ids = [c.id for c in _course_query_for_user().with_entities(Course.id).all()]
+        has_access = Enrollment.query.filter(
+            Enrollment.student_id == student_id,
+            Enrollment.course_id.in_(allowed_course_ids)
+        ).first()
+        if not has_access:
+            abort(404)
+    student = Student.query.get_or_404(student_id)
+    return render_template("courses/student_detail.html", student=student)
+
+
+@courses_bp.route("/new", methods=["GET", "POST"])
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
 def new_course():
     form = CourseForm()
     form.organization_id.choices = [(o.id, o.name) for o in Organization.query.order_by(Organization.name).all()]
     form.course_type_id.choices = [(c.id, c.name) for c in CourseType.query.order_by(CourseType.name).all()]
     form.location_id.choices = [(l.id, l.name) for l in Location.query.order_by(Location.name).all()]
-    teachers = Teacher.query.order_by(Teacher.full_name).all()
-    form.teacher_id.choices = [(t.id, t.full_name) for t in teachers]
+    teacher_users = User.query.filter_by(role="teacher").order_by(User.full_name).all()
+    form.teacher_user_id.choices = [(0, "Öğretmen yok")] + [(u.id, u.full_name) for u in teacher_users]
     if current_user.role == "teacher":
-        teacher = Teacher.query.filter_by(user_id=current_user.id).first()
-        if teacher:
-            form.teacher_id.data = teacher.id
+        form.teacher_user_id.data = current_user.id
 
     if form.validate_on_submit():
-        selected_teacher = Teacher.query.get(form.teacher_id.data)
-        if not selected_teacher:
-            flash("Lütfen bir öğretmen seçin.", "error")
-            return render_template("courses/new.html", form=form)
-        teacher_user_id = selected_teacher.user_id if selected_teacher and selected_teacher.user_id else None
+        selected_user = User.query.get(form.teacher_user_id.data) if form.teacher_user_id.data else None
+        linked_teacher = Teacher.query.filter_by(user_id=selected_user.id).first() if selected_user else None
+        teacher_user_id = selected_user.id if selected_user else None
+        selected_org = Organization.query.get(form.organization_id.data) if form.organization_id.data else None
+        selected_type = CourseType.query.get(form.course_type_id.data) if form.course_type_id.data else None
+        selected_loc = Location.query.get(form.location_id.data) if form.location_id.data else None
         schedule_days = request.form.getlist("schedule_days")
         schedule = {
             "days": schedule_days,
@@ -101,8 +154,12 @@ def new_course():
             organization_id=form.organization_id.data,
             course_type_id=form.course_type_id.data,
             location_id=form.location_id.data,
-            teacher_id=form.teacher_id.data,
+            teacher_id=linked_teacher.id if linked_teacher else None,
             teacher_user_id=teacher_user_id,
+            teacher_name_cached=selected_user.full_name if selected_user else None,
+            organization_name_cached=selected_org.name if selected_org else None,
+            course_type_name_cached=selected_type.name if selected_type else None,
+            location_name_cached=selected_loc.name if selected_loc else None,
             title=form.title.data,
             term=form.term.data,
             start_date=form.start_date.data,
@@ -139,6 +196,97 @@ def new_course():
 
     return render_template("courses/new.html", form=form)
 
+@courses_bp.route("/<int:course_id>/edit", methods=["GET", "POST"])
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
+def edit_course(course_id):
+    course = _course_query_for_user().filter_by(id=course_id).first_or_404()
+    form = CourseForm(obj=course)
+    form.organization_id.choices = [(o.id, o.name) for o in Organization.query.order_by(Organization.name).all()]
+    form.course_type_id.choices = [(c.id, c.name) for c in CourseType.query.order_by(CourseType.name).all()]
+    form.location_id.choices = [(l.id, l.name) for l in Location.query.order_by(Location.name).all()]
+    teacher_users = User.query.filter_by(role="teacher").order_by(User.full_name).all()
+    form.teacher_user_id.choices = [(0, "Öğretmen yok")] + [(u.id, u.full_name) for u in teacher_users]
+    if course.teacher_user_id:
+        form.teacher_user_id.data = course.teacher_user_id
+    elif course.teacher_id:
+        linked = Teacher.query.get(course.teacher_id)
+        form.teacher_user_id.data = linked.user_id if linked and linked.user_id else 0
+    else:
+        form.teacher_user_id.data = 0
+
+    if form.validate_on_submit():
+        selected_user = User.query.get(form.teacher_user_id.data) if form.teacher_user_id.data else None
+        linked_teacher = Teacher.query.filter_by(user_id=selected_user.id).first() if selected_user else None
+        teacher_user_id = selected_user.id if selected_user else None
+        selected_org = Organization.query.get(form.organization_id.data) if form.organization_id.data else None
+        selected_type = CourseType.query.get(form.course_type_id.data) if form.course_type_id.data else None
+        selected_loc = Location.query.get(form.location_id.data) if form.location_id.data else None
+        schedule_days = request.form.getlist("schedule_days")
+        schedule = {
+            "days": schedule_days,
+            "start_time": form.start_time.data.isoformat() if form.start_time.data else None,
+            "end_time": form.end_time.data.isoformat() if form.end_time.data else None
+        }
+        course.organization_id = form.organization_id.data
+        course.course_type_id = form.course_type_id.data
+        course.location_id = form.location_id.data
+        course.teacher_id = linked_teacher.id if linked_teacher else None
+        course.teacher_user_id = teacher_user_id
+        course.teacher_name_cached = selected_user.full_name if selected_user else None
+        course.organization_name_cached = selected_org.name if selected_org else None
+        course.course_type_name_cached = selected_type.name if selected_type else None
+        course.location_name_cached = selected_loc.name if selected_loc else None
+        course.title = form.title.data
+        course.term = form.term.data
+        course.start_date = form.start_date.data
+        course.end_date = form.end_date.data
+        course.capacity = form.capacity.data
+        course.schedule_json = schedule
+        db.session.add(course)
+        db.session.add(AuditLog(
+            actor_user_id=current_user.id,
+            action="update",
+            entity_type="course",
+            entity_id=course.id,
+            after_json=serialize_json({"title": course.title})
+        ))
+        db.session.commit()
+        flash("Kurs güncellendi.", "success")
+        return redirect(url_for("courses.course_detail", course_id=course.id))
+
+    schedule_days_selected = set()
+    if course.schedule_json and course.schedule_json.get("days"):
+        schedule_days_selected = set(course.schedule_json.get("days", []))
+    return render_template("courses/edit.html", form=form, course=course, schedule_days_selected=schedule_days_selected)
+
+@courses_bp.route("/<int:course_id>/delete", methods=["POST"])
+@login_required
+@require_roles("admin")
+def delete_course(course_id):
+    course = _course_query_for_user().filter_by(id=course_id).first_or_404()
+    password = request.form.get("password", "")
+    if not bcrypt.check_password_hash(current_user.password_hash, password):
+        flash("Åifre hatalÄ±.", "error")
+        return redirect(request.referrer or url_for("courses.list_courses"))
+
+    session_ids = [s.id for s in Session.query.filter_by(course_id=course.id).all()]
+    if session_ids:
+        Attendance.query.filter(Attendance.session_id.in_(session_ids)).delete(synchronize_session=False)
+    Enrollment.query.filter_by(course_id=course.id).delete(synchronize_session=False)
+    Session.query.filter_by(course_id=course.id).delete(synchronize_session=False)
+    db.session.delete(course)
+    db.session.add(AuditLog(
+        actor_user_id=current_user.id,
+        action="delete",
+        entity_type="course",
+        entity_id=course.id,
+        after_json=serialize_json({"title": course.title})
+    ))
+    db.session.commit()
+    flash("Kurs silindi.", "success")
+    return redirect(url_for("courses.list_courses"))
+
 
 @courses_bp.route("/<int:course_id>")
 @login_required
@@ -158,7 +306,16 @@ def course_detail(course_id):
             Attendance.status.in_(["present", "late", "excused"])
         ).group_by(Attendance.session_id).all()
         attended_counts = {session_id: count for session_id, count in rows}
-    students = Student.query.order_by(Student.full_name).all()
+    if current_user.role == "teacher":
+        students = [e.student for e in enrollments]
+    else:
+        active_student_ids = db.session.query(Enrollment.student_id).filter(Enrollment.status == "active")
+        students = (
+            Student.query
+            .filter(~Student.id.in_(active_student_ids))
+            .order_by(Student.full_name)
+            .all()
+        )
     return render_template(
         "courses/detail.html",
         course=course,
@@ -172,13 +329,20 @@ def course_detail(course_id):
 
 @courses_bp.route("/<int:course_id>/enroll", methods=["POST"])
 @login_required
-@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+@require_roles("coordinator", "principal", "attache", "admin")
 def enroll_student(course_id):
     course = _course_query_for_user().filter_by(id=course_id).first_or_404()
     student_id = int(request.form.get("student_id"))
     existing = Enrollment.query.filter_by(course_id=course.id, student_id=student_id).first()
     if existing:
         flash("Bu kursiyer zaten kay?tl?.", "error")
+        return redirect(url_for("courses.course_detail", course_id=course.id))
+    active_enrollment = Enrollment.query.filter(
+        Enrollment.student_id == student_id,
+        Enrollment.status == "active"
+    ).first()
+    if active_enrollment:
+        flash("Kursiyer zaten aktif bir kursa kay?tl?.", "error")
         return redirect(url_for("courses.course_detail", course_id=course.id))
     enrollment = Enrollment(course_id=course.id, student_id=student_id)
     db.session.add(enrollment)
@@ -190,42 +354,42 @@ def enroll_student(course_id):
 
 @courses_bp.route("/<int:course_id>/enrollments/<int:student_id>/delete", methods=["POST"])
 @login_required
-@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+@require_roles("coordinator", "principal", "attache", "admin")
 def remove_enrollment(course_id, student_id):
     course = _course_query_for_user().filter_by(id=course_id).first_or_404()
     enrollment = Enrollment.query.filter_by(course_id=course.id, student_id=student_id).first_or_404()
     db.session.delete(enrollment)
     db.session.add(AuditLog(actor_user_id=current_user.id, action="unenroll", entity_type="course", entity_id=course.id, after_json=serialize_json({"student_id": student_id})))
     db.session.commit()
-    flash("Kursiyer çıkarıldı.", "success")
+    flash("Kursiyer Ã§Ä±karÄ±ldÄ±.", "success")
     return redirect(url_for("courses.course_detail", course_id=course.id))
 
 
 @courses_bp.route("/<int:course_id>/status", methods=["POST"])
 @login_required
-@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+@require_roles("admin")
 def update_status(course_id):
     course = _course_query_for_user().filter_by(id=course_id).first_or_404()
     status = request.form.get("status")
     allowed = {"ended", "dropped", "cancelled", "updated", "archived"}
     if status not in allowed:
-        flash("Geçersiz durum seçimi.", "error")
+        flash("GeÃ§ersiz durum seÃ§imi.", "error")
         return redirect(url_for("courses.list_courses"))
     course.status = status
     db.session.add(AuditLog(actor_user_id=current_user.id, action="status_update", entity_type="course", entity_id=course.id, after_json=serialize_json({"status": status})))
     db.session.commit()
-    flash("Kurs durumu güncellendi.", "success")
+    flash("Kurs durumu gÃ¼ncellendi.", "success")
     return redirect(url_for("courses.completed_courses"))
 
 
 @courses_bp.route("/<int:course_id>/restore", methods=["POST"])
 @login_required
-@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+@require_roles("admin")
 def restore_course(course_id):
     course = _course_query_for_user().filter_by(id=course_id).first_or_404()
     password = request.form.get("password", "")
     if not bcrypt.check_password_hash(current_user.password_hash, password):
-        flash("Şifre hatalı.", "error")
+        flash("Åifre hatalÄ±.", "error")
         return redirect(request.referrer or url_for("courses.completed_courses"))
     course.status = "active"
     db.session.add(AuditLog(
@@ -262,6 +426,50 @@ def new_session(course_id):
     return render_template("courses/new_session.html", form=form, course=course)
 
 
+@courses_bp.route("/sessions/<int:session_id>/edit", methods=["GET", "POST"])
+@login_required
+@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+def edit_session(session_id):
+    session = Session.query.get_or_404(session_id)
+    course = _course_query_for_user().filter_by(id=session.course_id).first_or_404()
+    form = SessionForm(obj=session)
+    if form.validate_on_submit():
+        session.session_date = form.session_date.data
+        session.start_time = form.start_time.data
+        session.end_time = form.end_time.data
+        session.topic = form.topic.data
+        db.session.add(session)
+        db.session.add(AuditLog(
+            actor_user_id=current_user.id,
+            action="update",
+            entity_type="session",
+            entity_id=session.id,
+            after_json=serialize_json({"session_date": str(session.session_date)})
+        ))
+        db.session.commit()
+        flash("Oturum gÃ¼ncellendi.", "success")
+        return redirect(url_for("courses.course_detail", course_id=course.id))
+    return render_template("courses/edit_session.html", form=form, course=course, session=session)
+
+
+@courses_bp.route("/sessions/<int:session_id>/delete", methods=["POST"])
+@login_required
+@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+def delete_session(session_id):
+    session = Session.query.get_or_404(session_id)
+    course = _course_query_for_user().filter_by(id=session.course_id).first_or_404()
+    db.session.delete(session)
+    db.session.add(AuditLog(
+        actor_user_id=current_user.id,
+        action="delete",
+        entity_type="session",
+        entity_id=session.id
+    ))
+    db.session.commit()
+    flash("Oturum silindi.", "success")
+    return redirect(url_for("courses.course_detail", course_id=course.id))
+
+
 @courses_bp.route("/sessions/<int:session_id>/attendance", methods=["GET", "POST"])
 @login_required
 @require_roles("teacher", "coordinator", "principal", "attache", "admin")
@@ -276,7 +484,7 @@ def take_attendance(session_id):
         db.session.add(session)
         if not lesson_delivered:
             db.session.commit()
-            flash("Ders işlenmedi olarak kaydedildi.", "success")
+            flash("Ders iÅŸlenmedi olarak kaydedildi.", "success")
             return redirect(url_for("courses.course_detail", course_id=course.id))
 
         for enrollment in enrollments:
@@ -324,7 +532,7 @@ def take_attendance(session_id):
                 }
                 emit_webhook("absence_threshold_exceeded", payload)
                 if enrollment.student.phone:
-                    send_whatsapp("Devamsızlık eşiği aşıldı. Lütfen kurs ile iletişime geçin.", enrollment.student.phone)
+                    send_whatsapp("DevamsÄ±zlÄ±k eÅŸiÄŸi aÅŸÄ±ldÄ±. LÃ¼tfen kurs ile iletiÅŸime geÃ§in.", enrollment.student.phone)
 
         emit_webhook("session_attendance_submitted", {
             "event_type": "session_attendance_submitted",
@@ -372,7 +580,7 @@ def attendance_pdf(session_id):
     status_labels = {
         "present": "Mevcut",
         "absent": "Yok",
-        "late": "Geç kaldı",
+        "late": "GeÃ§ kaldÄ±",
         "excused": "Mazeretli"
     }
 
@@ -403,7 +611,7 @@ def attendance_pdf(session_id):
                 c.drawString(col_x[idx], y, header)
             y -= 16
         attendance = attendance_map.get(enrollment.student_id)
-        status = status_labels.get(attendance.status, "—") if attendance else "—"
+        status = status_labels.get(attendance.status, "â€”") if attendance else "â€”"
         note = attendance.note or "" if attendance else ""
         c.drawString(col_x[0], y, enrollment.student.full_name)
         c.drawString(col_x[1], y, status)
@@ -422,11 +630,11 @@ def attendance_pdf(session_id):
 def export_attendance(course_id):
     course = _course_query_for_user().filter_by(id=course_id).first_or_404()
     rows = []
-    rows.append("Tarih,Öğrenci,Durum,Not")
+    rows.append("Tarih,Ã–ÄŸrenci,Durum,Not")
     status_labels = {
         "present": "Mevcut",
         "absent": "Yok",
-        "late": "Geç kaldı",
+        "late": "GeÃ§ kaldÄ±",
         "excused": "Mazeretli"
     }
     for session in Session.query.filter_by(course_id=course.id, lesson_delivered=True).all():
@@ -440,3 +648,5 @@ def export_attendance(course_id):
         as_attachment=True,
         download_name=f"attendance_course_{course.id}.csv"
     )
+
+

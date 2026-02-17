@@ -21,12 +21,15 @@
       {{ form.hidden_tag() }}
       <div><label class="label">Kullanıcı Adı</label>{{ form.username(class_='input') }}</div>
       <div><label class="label">Ad Soyad</label>{{ form.full_name(class_='input') }}</div>
+      <div><label class="label">T.C. / IIN</label>{{ form.identity_number(class_='input') }}</div>
       <div><label class="label">Telefon</label>{{ form.phone(class_='input') }}</div>
       <div><label class="label">E-posta</label>{{ form.email(class_='input') }}</div>
       <div><label class="label">Rol</label>{{ form.role(class_='select') }}</div>
+      {% if current_user.role == 'admin' %}
       <div class="flex items-center gap-2">
         {{ form.is_active() }}<span class="text-sm">Aktif</span>
       </div>
+      {% endif %}
       <button class="btn-primary w-full">Oluştur</button>
     </form>
     <p class="text-xs text-ink-400 mt-3">Geçici şifre otomatik oluşturulur ve işlem sonunda gösterilir.</p>
@@ -42,15 +45,19 @@
           <td>{{ item.role }}</td>
           <td>{{ 'Aktif' if item.is_active else 'Pasif' }}</td>
           <td class="text-right">
-            <a class="btn-secondary" href="{{ url_for('admin.edit_user', user_id=item.id) }}">Düzenle</a>
-            <form method="post" action="{{ url_for('admin.reset_user_password', user_id=item.id) }}" class="inline" onsubmit="return confirm('Şifre sıfırlansın mı?')">
-              {{ form.hidden_tag() }}
-              <button class="btn-secondary">Şifre Sıfırla</button>
-            </form>
-            <form method="post" action="{{ url_for('admin.delete_user', user_id=item.id) }}" class="inline" onsubmit="return confirm('Kullanıcı silinsin mi?')">
-              {{ form.hidden_tag() }}
-              <button class="btn-secondary">Sil</button>
-            </form>
+            {% if current_user.role == 'admin' %}
+              <a class="btn-secondary" href="{{ url_for('admin.edit_user', user_id=item.id) }}">Düzenle</a>
+              <form method="post" action="{{ url_for('admin.reset_user_password', user_id=item.id) }}" class="inline" onsubmit="return confirm('Şifre sıfırlansın mı?')">
+                {{ form.hidden_tag() }}
+                <button class="btn-secondary">Şifre Sıfırla</button>
+              </form>
+              <form method="post" action="{{ url_for('admin.delete_user', user_id=item.id) }}" class="inline" onsubmit="return confirm('Kullanıcı silinsin mi?')">
+                {{ form.hidden_tag() }}
+                <button class="btn-secondary">Sil</button>
+              </form>
+            {% else %}
+              <span class="text-ink-400 text-sm">Yalnızca görüntüleme</span>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

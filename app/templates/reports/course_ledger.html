@@ -1,0 +1,94 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<div class="section-header mb-6">
+  <div>
+    <p class="section-kicker">Ataşelik Kurs Defteri</p>
+    <h2 class="font-display text-2xl">Kurs Defteri</h2>
+    <p class="section-subtitle">Yalnızca biten kurslar için eğitim-öğretim yılı bazında kayıtlar.</p>
+  </div>
+  <a class="btn-secondary" href="{{ url_for('reports.course_ledger_pdf', course_id=selected_course_id, academic_year=academic_year) }}">PDF Al</a>
+</div>
+
+<form method="get" class="filter-card form-grid mb-6 md:grid-cols-3">
+  <div>
+    <label class="label">Kurs</label>
+    <select name="course_id" class="select">
+      <option value="">Tümü</option>
+      {% for c in courses %}
+        <option value="{{ c.id }}" {% if selected_course_id == c.id %}selected{% endif %}>{{ c.title }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Eğitim Yılı</label>
+    <select name="academic_year" class="select">
+      <option value="">Tümü</option>
+      {% for year in academic_years %}
+        <option value="{{ year }}" {% if academic_year == year %}selected{% endif %}>{{ year }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Arama (Ad / IIN)</label>
+    <input type="text" name="q" class="input" value="{{ search }}">
+  </div>
+  <div class="md:col-span-3 flex items-end gap-2">
+    <button class="btn-primary">Getir</button>
+  </div>
+</form>
+
+{% if selected_course_id %}
+  <form method="post" action="{{ url_for('reports.generate_course_ledger') }}" class="mb-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="course_id" value="{{ selected_course_id }}">
+    <button class="btn-secondary" type="submit">Defteri Oluştur/Güncelle</button>
+  </form>
+{% endif %}
+
+<div class="card p-6">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Kursiyer</th>
+        <th>IIN</th>
+        <th>Kurs</th>
+        <th>Öğretmen</th>
+        <th>Dönem</th>
+        <th>Devam%</th>
+        <th>Sonuç</th>
+        <th>Not</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td>{{ row.student_full_name_cached }}</td>
+          <td>{{ row.student_iin_cached }}</td>
+          <td>{{ row.course_title_cached }}</td>
+          <td>{{ row.teacher_name_cached or '-' }}</td>
+          <td>{{ row.academic_year }}</td>
+          <td>{{ row.attendance_percent }}</td>
+          <td>{{ row.result }}</td>
+          <td>{{ row.notes or '-' }}</td>
+          <td class="text-right">
+            <form method="post" action="{{ url_for('reports.update_course_ledger', entry_id=row.id) }}" class="inline-flex items-center gap-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <select name="result" class="select">
+                {% for option in ["Tamamladı", "Başarılı", "Başarısız", "Devamsız"] %}
+                  <option value="{{ option }}" {% if row.result == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+              <input type="text" name="score" class="input w-20" placeholder="Not" value="{{ row.score or '' }}">
+              <input type="text" name="notes" class="input w-40" placeholder="Not" value="{{ row.notes or '' }}">
+              <button class="btn-secondary btn-sm">Kaydet</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="9" class="text-ink-400">Kayıt bulunmuyor.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

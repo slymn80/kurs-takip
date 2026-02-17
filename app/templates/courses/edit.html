@@ -1,0 +1,74 @@
+﻿{% extends 'layout.html' %}
+{% block content %}
+<h2 class="font-display text-2xl mb-4">Kursu Düzenle</h2>
+<form method="post" class="card p-6 space-y-4">
+  {{ form.hidden_tag() }}
+  <div class="grid md:grid-cols-2 gap-4">
+    <div>
+      <label class="label">Kurum</label>
+      {{ form.organization_id(class_='select') }}
+    </div>
+    <div>
+      <label class="label">Kurs Tipi</label>
+      {{ form.course_type_id(class_='select') }}
+    </div>
+    <div>
+      <label class="label">Yer</label>
+      {{ form.location_id(class_='select') }}
+    </div>
+    <div>
+      <label class="label">Öğretmen</label>
+      {{ form.teacher_user_id(class_='select') }}
+    </div>
+    <div>
+      <label class="label">Başlık</label>
+      {{ form.title(class_='input') }}
+    </div>
+    <div>
+      <label class="label">Dönem</label>
+      {{ form.term(class_='select') }}
+    </div>
+    <div>
+      <label class="label">Başlangıç</label>
+      {{ form.start_date(class_='input') }}
+    </div>
+    <div>
+      <label class="label">Bitiş</label>
+      {{ form.end_date(class_='input') }}
+    </div>
+    <div>
+      <label class="label">Kapasite</label>
+      {{ form.capacity(class_='input') }}
+    </div>
+  </div>
+  <div>
+    <p class="label">Günler</p>
+    <div class="flex flex-wrap gap-3">
+      {% for value, label in [("mon","Pzt"),("tue","Sal"),("wed","Çar"),("thu","Per"),("fri","Cum"),("sat","Cmt"),("sun","Paz")] %}
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="schedule_days" value="{{ value }}" class="rounded" {% if value in schedule_days_selected %}checked{% endif %}>
+          {{ label }}
+        </label>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="grid md:grid-cols-2 gap-4">
+    <div>
+      <label class="label">Başlangıç Saati</label>
+      {{ form.start_time(class_='input') }}
+    </div>
+    <div>
+      <label class="label">Bitiş Saati</label>
+      {{ form.end_time(class_='input') }}
+    </div>
+  </div>
+  <div>
+    <label class="label">Açıklama</label>
+    {{ form.description(class_='input') }}
+  </div>
+  <div class="flex flex-wrap gap-2">
+    <button class="btn-primary">Güncelle</button>
+    <a class="btn-secondary" href="{{ url_for('courses.course_detail', course_id=course.id) }}">Vazgeç</a>
+  </div>
+</form>
+{% endblock %}

@@ -20,19 +20,98 @@
 </div>
 
 <div class="card p-6">
-  <h3 class="font-display text-xl mb-4">Paylaşılan Notlar</h3>
-  <div class="space-y-3">
-    {% for item in items %}
-      <div class="rounded-2xl border border-ink-100 bg-white p-4">
-        <div class="flex items-center justify-between mb-2">
-          <div class="font-semibold">{{ item.user.full_name if item.user else 'Kullanıcı' }}</div>
-          <div class="text-xs text-ink-400" data-local-time="{{ item.created_at.isoformat() }}Z"></div>
+  <form method="post" action="{{ url_for('messages.delete_many_messages') }}" id="bulkDeleteForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="password" id="bulkMessagePassword">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-xl">Paylaşılan Notlar</h3>
+      {% if current_user.role in ['admin','attache'] %}
+        <button class="btn-secondary btn-sm" type="button" id="bulkDeleteBtn">Seçilenleri Sil</button>
+      {% endif %}
+    </div>
+    <div class="space-y-3">
+      {% for item in items %}
+        <div class="rounded-2xl border border-ink-100 bg-white p-4">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-3">
+              {% if current_user.role in ['admin','attache'] %}
+                <input type="checkbox" name="message_ids" value="{{ item.id }}">
+              {% endif %}
+              <div class="font-semibold">{{ item.user.full_name if item.user else 'Kullanıcı' }}</div>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-xs text-ink-400" data-local-time="{{ item.created_at.isoformat() }}Z"></div>
+              {% if current_user.role in ['admin','attache'] %}
+                <button class="btn-ghost btn-sm"
+                        type="submit"
+                        formaction="{{ url_for('messages.delete_message', message_id=item.id) }}"
+                        onclick="return confirm('Mesaj silinsin mi?')">Sil</button>
+              {% endif %}
+            </div>
+          </div>
+          <div class="text-sm text-ink-900">{{ item.content }}</div>
         </div>
-        <div class="text-sm text-ink-900">{{ item.content }}</div>
-      </div>
-    {% else %}
-      <div class="text-ink-400">Henüz mesaj yok.</div>
-    {% endfor %}
-  </div>
+      {% else %}
+        <div class="text-ink-400">Henüz mesaj yok.</div>
+      {% endfor %}
+    </div>
+  </form>
 </div>
+
+{% if current_user.role in ['admin','attache'] %}
+  <div id="bulkMessageModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-card">
+      <h3 class="font-display text-xl mb-2">Toplu Mesaj Sil</h3>
+      <p class="text-ink-500 text-sm mb-4">Seçilen mesajlar kalıcı olarak silinecek.</p>
+      <label class="label mb-2">Şifre</label>
+      <input id="bulkMessagePasswordInput" type="password" class="input w-full mb-4" placeholder="Şifre">
+      <div class="flex items-center justify-end gap-2">
+        <button type="button" class="btn-secondary btn-sm" id="bulkMessageCancel">İptal</button>
+        <button type="button" class="btn-danger btn-sm" id="bulkMessageConfirm">Sil</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const bulkBtn = document.getElementById('bulkDeleteBtn');
+    const bulkForm = document.getElementById('bulkDeleteForm');
+    const bulkModal = document.getElementById('bulkMessageModal');
+    const bulkPwd = document.getElementById('bulkMessagePasswordInput');
+    const bulkPwdHidden = document.getElementById('bulkMessagePassword');
+    const bulkCancel = document.getElementById('bulkMessageCancel');
+    const bulkConfirm = document.getElementById('bulkMessageConfirm');
+
+    const openBulkModal = () => {
+      bulkModal.classList.add('is-open');
+      bulkModal.setAttribute('aria-hidden', 'false');
+      bulkPwd.value = '';
+      bulkPwd.focus();
+    };
+    const closeBulkModal = () => {
+      bulkModal.classList.remove('is-open');
+      bulkModal.setAttribute('aria-hidden', 'true');
+    };
+
+    const updateBulkState = () => {
+      if (!bulkBtn) return;
+      const hasChecked = bulkForm.querySelectorAll('input[name="message_ids"]:checked').length > 0;
+      bulkBtn.disabled = !hasChecked;
+    };
+
+    if (bulkBtn) {
+      bulkForm.querySelectorAll('input[name="message_ids"]').forEach((cb) => {
+        cb.addEventListener('change', updateBulkState);
+      });
+      updateBulkState();
+      bulkBtn.addEventListener('click', openBulkModal);
+    }
+    bulkCancel?.addEventListener('click', closeBulkModal);
+    bulkModal?.addEventListener('click', (e) => { if (e.target === bulkModal) closeBulkModal(); });
+    bulkConfirm?.addEventListener('click', () => {
+      const val = bulkPwd.value.trim();
+      if (!val) return bulkPwd.focus();
+      bulkPwdHidden.value = val;
+      bulkForm.submit();
+    });
+  </script>
+{% endif %}
 {% endblock %}

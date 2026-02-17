@@ -1,4 +1,4 @@
-﻿<div id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 transform bg-white border-r border-ink-100 px-4 py-6 transition-transform duration-300 lg:translate-x-0 -translate-x-full">
+﻿<div id="sidebar" class="app-sidebar fixed inset-y-0 left-0 z-40 w-64 transform px-4 py-6 transition-transform duration-300 lg:translate-x-0 -translate-x-full">
   <div class="flex items-center justify-between">
     <div>
       <p class="text-sm uppercase tracking-wide text-ink-600 font-semibold">Eğitim Ataşeliği</p>
@@ -9,32 +9,47 @@
     </button>
   </div>
   <nav class="mt-8 space-y-2 overflow-y-auto max-h-[calc(100vh-140px)] pr-1">
-    <a href="{{ url_for('dashboard.index') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Genel Durum</a>
-    <a href="{{ url_for('courses.list_courses') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Kurslar</a>
-    {% if current_user.role in ['teacher','coordinator','principal','attache','admin'] %}
-      <a href="{{ url_for('definitions.students') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Kursiyerler</a>
-      <a href="{{ url_for('messages.index') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">İletişim</a>
-      <a href="{{ url_for('stats.index') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">İstatistikler</a>
-      <a href="{{ url_for('reports.index') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Raporlar</a>
-      <a href="{{ url_for('announcements.index') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Duyurular</a>
+    {% set current = request.endpoint %}
+    <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if current == 'dashboard.index' %}nav-link-active{% endif %}">Genel Durum</a>
+    <a href="{{ url_for('courses.list_courses') }}" class="nav-link {% if current and current.startswith('courses.') %}nav-link-active{% endif %}">Kurslar</a>
+    {% if current_user.role == 'teacher' %}
+      <a href="{{ url_for('courses.my_students') }}" class="nav-link {% if current == 'courses.my_students' %}nav-link-active{% endif %}">Benim Kursiyerlerim</a>
+      <a href="{{ url_for('messages.index') }}" class="nav-link {% if current == 'messages.index' %}nav-link-active{% endif %}">İletişim</a>
+      <a href="{{ url_for('stats.index') }}" class="nav-link {% if current and current.startswith('stats.') %}nav-link-active{% endif %}">İstatistikler</a>
+      <a href="{{ url_for('reports.index') }}" class="nav-link {% if current == 'reports.index' %}nav-link-active{% endif %}">Raporlar</a>
+      <a href="{{ url_for('reports.certificates') }}" class="nav-link {% if current == 'reports.certificates' %}nav-link-active{% endif %}">Sertifikalar</a>
+      <a href="{{ url_for('reports.course_ledger') }}" class="nav-link {% if current == 'reports.course_ledger' %}nav-link-active{% endif %}">Kurs Defteri</a>
+      <a href="{{ url_for('announcements.index') }}" class="nav-link {% if current and current.startswith('announcements.') %}nav-link-active{% endif %}">Ataşelik Duyuruları</a>
     {% endif %}
     {% if current_user.role in ['coordinator','principal','attache','admin'] %}
-      <div class="pt-4 text-xs uppercase tracking-wide text-ink-400">Tanımlamalar</div>
-      <a href="{{ url_for('definitions.organizations') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Kurumlar</a>
-      <a href="{{ url_for('definitions.locations') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Yerler</a>
-      <a href="{{ url_for('definitions.course_types') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Kurs Tipleri</a>
-      <a href="{{ url_for('definitions.teachers') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Öğretmenler</a>
+      <a href="{{ url_for('definitions.students') }}" class="nav-link {% if current and current.startswith('definitions.') %}nav-link-active{% endif %}">Kursiyerler</a>
+      <a href="{{ url_for('messages.index') }}" class="nav-link {% if current == 'messages.index' %}nav-link-active{% endif %}">İletişim</a>
+      <a href="{{ url_for('stats.index') }}" class="nav-link {% if current and current.startswith('stats.') %}nav-link-active{% endif %}">İstatistikler</a>
+      <a href="{{ url_for('reports.index') }}" class="nav-link {% if current == 'reports.index' %}nav-link-active{% endif %}">Raporlar</a>
+      <a href="{{ url_for('reports.certificates') }}" class="nav-link {% if current == 'reports.certificates' %}nav-link-active{% endif %}">Sertifikalar</a>
+      <a href="{{ url_for('reports.course_ledger') }}" class="nav-link {% if current == 'reports.course_ledger' %}nav-link-active{% endif %}">Kurs Defteri</a>
+      <a href="{{ url_for('announcements.index') }}" class="nav-link {% if current and current.startswith('announcements.') %}nav-link-active{% endif %}">Ataşelik Duyuruları</a>
+    {% endif %}
+    {% if current_user.role in ['coordinator','principal','attache','admin'] %}
+      <div class="nav-section-title">Tanımlamalar</div>
+      <a href="{{ url_for('definitions.organizations') }}" class="nav-link {% if current == 'definitions.organizations' %}nav-link-active{% endif %}">Kurumlar</a>
+      <a href="{{ url_for('definitions.locations') }}" class="nav-link {% if current == 'definitions.locations' %}nav-link-active{% endif %}">Yerler</a>
+      <a href="{{ url_for('definitions.course_types') }}" class="nav-link {% if current == 'definitions.course_types' %}nav-link-active{% endif %}">Kurs Tipleri</a>
+      <a href="{{ url_for('definitions.teachers') }}" class="nav-link {% if current == 'definitions.teachers' %}nav-link-active{% endif %}">Öğretmenler</a>
     {% endif %}
     {% if current_user.role == 'admin' %}
-      <div class="pt-4 text-xs uppercase tracking-wide text-ink-400">Admin</div>
-      <a href="{{ url_for('admin.users') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Kullanıcılar</a>
-      <a href="{{ url_for('admin.settings') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Ayarlar</a>
-      <a href="{{ url_for('admin.year_rollover') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Akademik Yıl Geçisi</a>
-      <a href="{{ url_for('admin.audit_logs') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Denetim Logları</a>
+      <div class="nav-section-title">Admin</div>
+      <a href="{{ url_for('admin.users') }}" class="nav-link {% if current == 'admin.users' %}nav-link-active{% endif %}">Kullanıcılar</a>
+      <a href="{{ url_for('admin.placement_management') }}" class="nav-link {% if current == 'admin.placement_management' %}nav-link-active{% endif %}">Seviye Sınavı Yönetimi</a>
+      <a href="{{ url_for('admin.pre_registrations') }}" class="nav-link {% if current == 'admin.pre_registrations' %}nav-link-active{% endif %}">Ön Kayıt Yönetimi</a>
+      <a href="{{ url_for('admin.api_tokens') }}" class="nav-link {% if current == 'admin.api_tokens' %}nav-link-active{% endif %}">API Tokenlar</a>
+      <a href="{{ url_for('admin.settings') }}" class="nav-link {% if current == 'admin.settings' %}nav-link-active{% endif %}">Ayarlar</a>
+      <a href="{{ url_for('admin.year_rollover') }}" class="nav-link {% if current == 'admin.year_rollover' %}nav-link-active{% endif %}">Akademik Yıl Geçisi</a>
+      <a href="{{ url_for('admin.audit_logs') }}" class="nav-link {% if current == 'admin.audit_logs' %}nav-link-active{% endif %}">Denetim Logları</a>
     {% endif %}
     <div class="pt-4 border-t border-ink-100"></div>
-    <a href="{{ url_for('auth.update_password') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50">Şifre Değiştir</a>
-    <a href="{{ url_for('auth.logout') }}" class="block rounded-xl px-3 py-2 hover:bg-ink-50 text-rose-700">Çıkış</a>
+    <a href="{{ url_for('auth.update_password') }}" class="nav-link {% if current == 'auth.update_password' %}nav-link-active{% endif %}">Şifre Değiştir</a>
+    <a href="{{ url_for('auth.logout') }}" class="nav-link nav-link-danger">Çıkış</a>
   </nav>
 </div>
 <div id="sidebar-overlay" class="fixed inset-0 bg-ink-900/30 backdrop-blur-sm hidden lg:hidden" data-close-sidebar></div>

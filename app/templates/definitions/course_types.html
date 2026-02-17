@@ -40,10 +40,10 @@
           <td class="text-right">
             <a class="btn-secondary" href="{{ url_for('definitions.edit_course_type', ct_id=item.id) }}">Düzenle</a>
             {% if current_user.role == 'admin' %}
-            <form method="post" action="{{ url_for('definitions.delete_course_type', ct_id=item.id) }}" class="inline">
-              {{ form.hidden_tag() }}
-              <button class="btn-secondary">Sil</button>
-            </form>
+        <form method="post" action="{{ url_for('definitions.delete_course_type', ct_id=item.id) }}" class="inline" onsubmit="return confirm('Kurs tipi pasif hale getirilsin mi?')">
+          {{ form.hidden_tag() }}
+          <button class="btn-secondary">Sil</button>
+        </form>
             {% endif %}
           </td>
         </tr>

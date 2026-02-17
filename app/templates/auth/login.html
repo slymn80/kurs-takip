@@ -1,6 +1,6 @@
 ﻿{% extends 'layout.html' %}
 {% block auth %}
-<div class="min-h-screen flex items-center justify-center bg-ink-50 p-6">
+<div class="min-h-screen flex items-center justify-center auth-shell p-6">
   <div class="w-full max-w-md card p-8">
     <h1 class="font-display text-3xl mb-2">Kurs Takip Yazılımı</h1>
     <p class="text-ink-500 mb-6">Eğitim Ataşeliği</p>
@@ -27,6 +27,40 @@
       </div>
       <button class="btn-primary w-full">Giriş</button>
     </form>
+    <div class="mt-8 space-y-2">
+      <a href="{{ url_for('public.pre_registration', lang='tr') }}" class="btn-ghost w-full justify-center">
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 0 1 2-2h6l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z"/><path d="M7 3v5h6V3H7z"/></svg>
+        </span>
+        Kursiyer Ön Kayıt (TR)
+      </a>
+      <a href="{{ url_for('public.pre_registration', lang='kz') }}" class="btn-ghost w-full justify-center">
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 0 1 2-2h6l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z"/><path d="M7 3v5h6V3H7z"/></svg>
+        </span>
+        Алдын ала тіркелу (KZ)
+      </a>
+      <a href="{{ url_for('public.pre_registration', lang='en') }}" class="btn-ghost w-full justify-center">
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 0 1 2-2h6l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z"/><path d="M7 3v5h6V3H7z"/></svg>
+        </span>
+        Pre-registration (EN)
+      </a>
+      <a href="{{ url_for('public.pre_registration', lang='ru') }}" class="btn-ghost w-full justify-center">
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 0 1 2-2h6l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z"/><path d="M7 3v5h6V3H7z"/></svg>
+        </span>
+        Предрегистрация (RU)
+      </a>
+      <div class="pt-4">
+        <a href="{{ url_for('placement.landing') }}" class="btn-secondary w-full justify-center">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 3h12a1 1 0 0 1 1 1v12l-4-2-4 2-4-2-1 1V4a1 1 0 0 1 1-1z"/></svg>
+          </span>
+          Ücretsiz Seviye Tespit Sınavı
+        </a>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

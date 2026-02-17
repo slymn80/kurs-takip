@@ -1,0 +1,37 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h2 class="font-display text-2xl">Öğrenci Detayı</h2>
+    <p class="text-ink-500">{{ student.full_name }}</p>
+  </div>
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card p-6 lg:col-span-2 space-y-3">
+    <div><span class="label">IIN/TC</span><div class="mt-1">{{ student.iin }}</div></div>
+    <div><span class="label">Eğitim Durumu</span><div class="mt-1">{{ student.education_level }}</div></div>
+    <div><span class="label">Telefon</span><div class="mt-1">{{ student.phone or '-' }}</div></div>
+    <div><span class="label">E-posta</span><div class="mt-1">{{ student.email or '-' }}</div></div>
+    <div><span class="label">Not</span><div class="mt-1">{{ student.notes or '-' }}</div></div>
+  </div>
+  <div class="card p-6 space-y-4">
+    <div>
+      <div class="label mb-2">Öğrenci Fotoğrafı</div>
+      {% if student.photo_path %}
+        <img src="{{ url_for('static', filename=student.photo_path) }}" alt="Öğrenci Fotoğrafı" class="rounded-xl border border-ink-100 w-full object-contain">
+      {% else %}
+        <div class="text-ink-400 text-sm">Fotoğraf yok.</div>
+      {% endif %}
+    </div>
+    <div>
+      <div class="label mb-2">Kimlik Görseli</div>
+      {% if student.id_image_path %}
+        <img src="{{ url_for('static', filename=student.id_image_path) }}" alt="Kimlik Görseli" class="rounded-xl border border-ink-100 w-full object-contain">
+      {% else %}
+        <div class="text-ink-400 text-sm">Kimlik görseli yok.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

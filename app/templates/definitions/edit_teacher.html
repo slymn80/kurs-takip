@@ -5,8 +5,29 @@
   <form method="post" class="card p-6 space-y-3">
     {{ form.hidden_tag() }}
     <div>
+      <label class="label">Ad Soyad (Öğretmen Kullanıcı)</label>
+      <select name="user_id" id="teacherUserSelect" class="select">
+        <option value="0">Seçilmedi</option>
+        {% for u in available_users %}
+          <option value="{{ u.id }}"
+                  data-full-name="{{ u.full_name }}"
+                  data-identity="{{ u.identity_number or '' }}"
+                  data-phone="{{ u.phone or '' }}"
+                  data-email="{{ u.email or '' }}"
+                  {% if selected_user_id == u.id %}selected{% endif %}>
+            {{ u.full_name }} ({{ u.username }})
+          </option>
+        {% endfor %}
+      </select>
+      <p class="text-xs text-ink-400 mt-1">Kullanıcı seçilmezse aşağıya manuel ad soyad girin.</p>
+    </div>
+    <div>
       <label class="label">Ad Soyad</label>
       {{ form.full_name(class_='input') }}
+    </div>
+    <div>
+      <label class="label">T.C. / IIN</label>
+      {{ form.identity_number(class_='input') }}
     </div>
     <div>
       <label class="label">Öğretmen / Akademisyen</label>
@@ -31,4 +52,35 @@
     <button class="btn-primary">Güncelle</button>
   </form>
 </div>
+<script>
+  const userSelect = document.getElementById('teacherUserSelect');
+  const fullNameInput = document.getElementById('full_name');
+  const identityInput = document.getElementById('identity_number');
+  const phoneInput = document.getElementById('phone');
+  const emailInput = document.getElementById('email');
+
+  const applyUserData = (option) => {
+    if (!option) return;
+    const fullName = option.dataset.fullName || '';
+    const identity = option.dataset.identity || '';
+    const phone = option.dataset.phone || '';
+    const email = option.dataset.email || '';
+    if (fullNameInput && !fullNameInput.value) fullNameInput.value = fullName;
+    if (identityInput && !identityInput.value) identityInput.value = identity;
+    if (phoneInput && !phoneInput.value) phoneInput.value = phone;
+    if (emailInput && !emailInput.value) emailInput.value = email;
+  };
+
+  if (userSelect) {
+    userSelect.addEventListener('change', () => {
+      const option = userSelect.selectedOptions[0];
+      if (fullNameInput) fullNameInput.value = '';
+      if (identityInput) identityInput.value = '';
+      if (phoneInput) phoneInput.value = '';
+      if (emailInput) emailInput.value = '';
+      applyUserData(option);
+    });
+    applyUserData(userSelect.selectedOptions[0]);
+  }
+</script>
 {% endblock %}

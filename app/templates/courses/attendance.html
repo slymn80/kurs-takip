@@ -1,6 +1,12 @@
 ﻿{% extends 'layout.html' %}
 {% block content %}
-<h2 class="font-display text-2xl mb-4">Yoklama Al - {{ session.session_date }}</h2>
+<div class="mb-6">
+  <h2 class="font-display text-2xl">Yoklama Al - {{ session.session_date.strftime('%d.%m.%Y') }}</h2>
+  <p class="text-ink-500 mt-1">{{ course.title }}</p>
+  <p class="text-ink-500">
+    Saat: {{ session.start_time.strftime('%H:%M') if session.start_time else '-' }} - {{ session.end_time.strftime('%H:%M') if session.end_time else '-' }}
+  </p>
+</div>
 <form method="post" class="card p-6 space-y-4" id="attendance-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="flex items-center gap-3">

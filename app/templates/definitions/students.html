@@ -74,7 +74,7 @@
           <td class="text-right">
             <a class="btn-secondary" href="{{ url_for('definitions.edit_student', student_id=item.id) }}">Düzenle</a>
             {% if current_user.role == 'admin' %}
-            <form method="post" action="{{ url_for('definitions.delete_student', student_id=item.id) }}" class="inline">
+            <form method="post" action="{{ url_for('definitions.delete_student', student_id=item.id) }}" class="inline" onsubmit="return confirm('Kursiyer pasif hale getirilsin mi?')">
               {{ form.hidden_tag() }}
               <button class="btn-secondary">Sil</button>
             </form>

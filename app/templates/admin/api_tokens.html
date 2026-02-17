@@ -1,0 +1,56 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="card p-6 lg:col-span-1">
+    <h2 class="font-display text-xl mb-4">Yeni API Token</h2>
+    {% if session.get('last_api_token') %}
+      <div class="rounded-xl border border-ink-100 bg-ink-50 p-4 mb-4">
+        <div class="text-xs uppercase tracking-wide text-ink-400">API Token</div>
+        <div class="text-sm text-ink-600 mt-1">Kullanıcı: {{ session.get('last_api_token_user') }}</div>
+        <div class="mt-2 flex items-center gap-2">
+          <input id="apiToken" class="input" readonly value="{{ session.get('last_api_token') }}">
+          <button type="button" class="btn-secondary" onclick="navigator.clipboard.writeText(document.getElementById('apiToken').value)">Kopyala</button>
+        </div>
+        <form method="post" action="{{ url_for('admin.clear_api_token') }}" class="mt-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn-secondary">Kapat</button>
+        </form>
+      </div>
+    {% endif %}
+    <form method="post" class="space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div><label class="label">Kullanıcı Adı</label><input name="username" class="input" placeholder="admin"></div>
+      <div><label class="label">Token Adı</label><input name="name" class="input" placeholder="integration"></div>
+      <button class="btn-primary w-full">Oluştur</button>
+    </form>
+    <p class="text-xs text-ink-400 mt-3">Token sadece bir kez gösterilir. Kaybetmeyin.</p>
+  </div>
+  <div class="card p-6 lg:col-span-2">
+    <h2 class="font-display text-xl mb-4">API Tokenlar</h2>
+    <table class="table">
+      <thead><tr><th>Kullanıcı</th><th>Ad</th><th>Durum</th><th>Oluşturma</th><th>Son Kullanım</th><th></th></tr></thead>
+      <tbody>
+        {% for token in tokens %}
+        <tr>
+          <td>{{ user_map.get(token.user_id).username if user_map.get(token.user_id) else token.user_id }}</td>
+          <td>{{ token.name }}</td>
+          <td>{{ 'Aktif' if token.is_active else 'Pasif' }}</td>
+          <td>{{ token.created_at.date() if token.created_at else '-' }}</td>
+          <td>{{ token.last_used_at.date() if token.last_used_at else '-' }}</td>
+          <td class="text-right">
+            {% if token.is_active %}
+            <form method="post" action="{{ url_for('admin.revoke_api_token', token_id=token.id) }}" class="inline" onsubmit="return confirm('Token iptal edilsin mi?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn-secondary">İptal</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-ink-400">Token yok.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

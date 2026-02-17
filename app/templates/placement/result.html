@@ -1,0 +1,24 @@
+﻿{% extends 'layout.html' %}
+{% block auth %}
+<div class="min-h-screen flex items-center justify-center auth-shell p-6">
+  <div class="w-full max-w-2xl card p-8">
+    <h1 class="font-display text-3xl mb-2">Sınav Sonucu</h1>
+    <p class="text-ink-500 mb-6">{{ candidate.full_name }} · IIN: {{ candidate.iin }}</p>
+    <div class="grid md:grid-cols-3 gap-4 mb-6">
+      <div class="soft-card p-4">
+        <div class="text-xs uppercase tracking-wide text-ink-400">Doğru</div>
+        <div class="text-2xl font-display">{{ correct }} / {{ total }}</div>
+      </div>
+      <div class="soft-card p-4">
+        <div class="text-xs uppercase tracking-wide text-ink-400">Skor</div>
+        <div class="text-2xl font-display">%{{ test.score_percent }}</div>
+      </div>
+      <div class="soft-card p-4">
+        <div class="text-xs uppercase tracking-wide text-ink-400">Seviye</div>
+        <div class="text-2xl font-display">{{ test.level }}</div>
+      </div>
+    </div>
+    <a class="btn-secondary w-full" href="{{ url_for('placement.landing', iin=candidate.iin) }}">Geçmiş Sonuçlar</a>
+  </div>
+</div>
+{% endblock %}

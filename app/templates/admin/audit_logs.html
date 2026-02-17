@@ -13,6 +13,8 @@
         <td>
           {% if log.actor_user_id and user_map.get(log.actor_user_id) %}
             {{ user_map.get(log.actor_user_id).full_name }}
+          {% elif log.actor_name_cached %}
+            {{ log.actor_name_cached }}{% if log.actor_username_cached %} ({{ log.actor_username_cached }}){% endif %}
           {% else %}
             —
           {% endif %}

@@ -1,0 +1,31 @@
+﻿{% extends 'layout.html' %}
+{% block auth %}
+<div class="min-h-screen auth-shell p-6">
+  <div class="max-w-4xl mx-auto card p-8">
+    <h1 class="font-display text-3xl mb-2">Türkçe Seviye Tespit Sınavı</h1>
+    <p class="text-ink-500 mb-6">30 soru · 4 beceri: Okuma, Dilbilgisi, Kelime, İletişim</p>
+    <form method="post" class="space-y-6">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% for q in questions %}
+        <div class="rounded-2xl border border-ink-100 bg-white p-5">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-xs uppercase tracking-wide text-ink-400">Soru {{ q.order }}</div>
+            <div class="text-xs text-ink-500">{{ q.skill }} · {{ q.difficulty }}</div>
+          </div>
+          <div class="text-base text-ink-900 mb-4">{{ q.prompt }}</div>
+          <div class="grid gap-2">
+            {% for opt in q.options %}
+              <label class="inline-flex items-center gap-2">
+                <input type="radio" name="q_{{ q.id }}" value="{{ loop.index0 }}">
+                <span>{{ opt }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+      <button class="btn-primary w-full">Sınavı Bitir</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

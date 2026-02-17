@@ -1,0 +1,115 @@
+{% extends 'layout.html' %}
+{% block content %}
+{% set education_labels = {
+  'primary': 'İlkokul',
+  'middle': 'Ortaokul',
+  'high': 'Lise',
+  'university': 'Üniversite',
+  'other': 'Diğer'
+} %}
+<div class="section-header mb-6">
+  <div>
+    <p class="section-kicker">Ön Kayıt</p>
+    <h2 class="font-display text-2xl">Ön Kayıt Yönetimi</h2>
+    <p class="section-subtitle">Başvuruları hızlıca inceleyip durumlarını güncelleyebilirsiniz.</p>
+  </div>
+</div>
+
+<div class="stat-grid md:grid-cols-3 mb-6">
+  <div class="stat-card">
+    <div class="stat-label">Bekleyen</div>
+    <div class="stat-value">{{ counts.get('pending',0) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Onaylı</div>
+    <div class="stat-value">{{ counts.get('approved',0) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Reddedilen</div>
+    <div class="stat-value">{{ counts.get('rejected',0) }}</div>
+  </div>
+</div>
+
+<div class="section-header mb-3">
+  <div>
+    <h3 class="font-display text-lg">Başvuru Filtreleri</h3>
+    <p class="section-subtitle">Ad, IIN veya telefon ile hızlı arama yapın.</p>
+  </div>
+</div>
+
+<form method="get" class="filter-card form-grid mb-6 md:grid-cols-3">
+  <div>
+    <label class="label">Durum</label>
+    <select name="status" class="select">
+      <option value="pending" {% if status == 'pending' %}selected{% endif %}>Bekleyen</option>
+      <option value="approved" {% if status == 'approved' %}selected{% endif %}>Onaylı</option>
+      <option value="rejected" {% if status == 'rejected' %}selected{% endif %}>Reddedilen</option>
+      <option value="all" {% if status == 'all' %}selected{% endif %}>Tümü</option>
+    </select>
+  </div>
+  <div>
+    <label class="label">Arama</label>
+    <input type="text" name="q" class="input" value="{{ search }}" placeholder="Ad, IIN veya telefon">
+  </div>
+  <div class="flex items-end gap-2">
+    <button class="btn-primary">Filtrele</button>
+    <a href="{{ url_for('admin.pre_registrations') }}" class="btn-ghost">Temizle</a>
+  </div>
+</form>
+
+<div class="section-header mb-3">
+  <div>
+    <h3 class="font-display text-lg">Başvurular</h3>
+    <p class="section-subtitle">Durumu güncelleyin ve notları kontrol edin.</p>
+  </div>
+</div>
+
+<div class="space-y-4">
+  {% for item in items %}
+    <div class="card p-5">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div class="text-sm text-ink-500">{{ item.iin }} · {{ item.phone }}</div>
+          <div class="text-base text-ink-900 mt-1">{{ item.full_name }}</div>
+          <div class="text-sm text-ink-600 mt-1">Seviye: {{ item.course_level }} · Eğitim: {{ education_labels.get(item.education_level, item.education_level) }}</div>
+          {% if item.email %}
+            <div class="text-sm text-ink-600 mt-1">E-posta: {{ item.email }}</div>
+          {% endif %}
+          {% if item.notes %}
+            <div class="text-sm text-ink-600 mt-2">Not: {{ item.notes }}</div>
+          {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+          {% if item.status == 'approved' %}
+            <span class="badge badge-success">Onaylı</span>
+          {% elif item.status == 'rejected' %}
+            <span class="badge badge-muted">Reddedildi</span>
+          {% else %}
+            <span class="badge badge-warning">Bekliyor</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        <form method="post" action="{{ url_for('admin.update_pre_registration_status', prereg_id=item.id, status=status) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="status" value="approved">
+          <button class="btn-primary btn-sm">Onayla</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.update_pre_registration_status', prereg_id=item.id, status=status) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="status" value="rejected">
+          <button class="btn-danger btn-sm">Reddet</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.update_pre_registration_status', prereg_id=item.id, status=status) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="status" value="pending">
+          <button class="btn-ghost btn-sm">Bekleyen Yap</button>
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <div class="card p-6 text-ink-500">Kayıt bulunmuyor.</div>
+  {% endfor %}
+</div>
+{% endblock %}

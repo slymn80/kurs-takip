@@ -9,29 +9,54 @@
     <p class="text-ink-400 text-xs uppercase">Aktif Kurs</p>
     <p class="text-3xl font-display">{{ active_courses }}</p>
   </div>
+  {% if current_user.role == 'teacher' %}
+  <div class="card p-5">
+    <p class="text-ink-400 text-xs uppercase">Bu Ay Yoklama</p>
+    <p class="text-3xl font-display">{{ total_attendance }}</p>
+  </div>
+  <div class="card p-5">
+    <p class="text-ink-400 text-xs uppercase">Aktif Kursiyer</p>
+    <p class="text-3xl font-display">{{ total_students }}</p>
+  </div>
+  {% else %}
   <div class="card p-5">
     <p class="text-ink-400 text-xs uppercase">Aktif Öğretmen</p>
     <p class="text-3xl font-display">{{ active_teachers }}</p>
   </div>
   <div class="card p-5">
-    <p class="text-ink-400 text-xs uppercase">Toplam Kursiyer</p>
+    <p class="text-ink-400 text-xs uppercase">Aktif Kursiyer</p>
     <p class="text-3xl font-display">{{ total_students }}</p>
   </div>
+  {% endif %}
   <div class="card p-5">
-    <p class="text-ink-400 text-xs uppercase">Bu Ay Devamsızlık</p>
-    <p class="text-3xl font-display">%{{ absence_rate }}</p>
+    <p class="text-ink-400 text-xs uppercase">Bu Ay Devam Oranı</p>
+    <p class="text-3xl font-display">%{{ attendance_rate }}</p>
   </div>
 </div>
 
+{% if current_user.role == 'teacher' %}
 <section class="mt-10">
   <div class="flex items-center justify-between mb-4">
-    <h3 class="font-display text-xl">Son Etkinlikler</h3>
+    <h3 class="font-display text-xl">Son 6 Oturum Yoklama</h3>
+  </div>
+  <div class="card p-6">
+    <canvas id="teacherAttendanceChart"></canvas>
+  </div>
+</section>
+{% endif %}
+
+<section class="mt-10">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-display text-xl">
+      {% if current_user.role == 'teacher' %}Son Kayıtlarım{% else %}Son Etkinlikler{% endif %}
+    </h3>
   </div>
   <div class="card p-6">
     <table class="table">
       <thead>
         <tr>
           <th>Kursiyer</th>
+          <th>İşlem</th>
           <th>Kurs</th>
           <th>Tarih</th>
         </tr>
@@ -40,16 +65,43 @@
         {% for enrollment in recent_enrollments %}
         <tr>
           <td>{{ enrollment.student.full_name }}</td>
+          <td>Kursa kayıt</td>
           <td>{{ enrollment.course.title }}</td>
           <td>{{ enrollment.enrolled_at.date() }}</td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="3" class="text-ink-400">Kayıt bulunmuyor.</td>
+          <td colspan="4" class="text-ink-400">Kayıt bulunmuyor.</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </section>
+
+{% if current_user.role == 'teacher' %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const attendanceLabels = {{ teacher_attendance_labels|tojson }};
+  const attendedData = {{ teacher_attended_counts|tojson }};
+  const absentData = {{ teacher_absent_counts|tojson }};
+  const ctx = document.getElementById('teacherAttendanceChart');
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: attendanceLabels,
+        datasets: [
+          { label: 'Katılan', data: attendedData, backgroundColor: 'rgba(5, 150, 105, 0.6)' },
+          { label: 'Devamsız', data: absentData, backgroundColor: 'rgba(225, 29, 72, 0.6)' }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+  }
+</script>
+{% endif %}
 {% endblock %}

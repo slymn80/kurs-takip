@@ -15,7 +15,7 @@
       {% for item in items %}
       <tr>
         <td>{{ item.title }}</td>
-        <td>{{ item.teacher.full_name if item.teacher else '-' }}</td>
+        <td>{{ item.teacher.full_name if item.teacher else (item.teacher_name_cached or '-') }}</td>
         <td>{{ item.start_date }} - {{ item.end_date }}</td>
         <td><span class="badge badge-warning">Kurs yarıda kaldı</span></td>
         <td class="text-right">

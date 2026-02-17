@@ -1,0 +1,63 @@
+﻿{% extends 'layout.html' %}
+{% block auth %}
+<div class="min-h-screen flex items-center justify-center auth-shell p-6">
+  <div class="w-full max-w-xl card p-8">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="font-display text-2xl">{{ t.title }}</h1>
+      <div class="btn-group">
+        <a href="{{ url_for('public.pre_registration', lang='tr') }}" class="{{ 'btn-primary' if lang == 'tr' else 'btn-ghost' }} btn-sm">TR</a>
+        <a href="{{ url_for('public.pre_registration', lang='kz') }}" class="{{ 'btn-primary' if lang == 'kz' else 'btn-ghost' }} btn-sm">KZ</a>
+        <a href="{{ url_for('public.pre_registration', lang='en') }}" class="{{ 'btn-primary' if lang == 'en' else 'btn-ghost' }} btn-sm">EN</a>
+        <a href="{{ url_for('public.pre_registration', lang='ru') }}" class="{{ 'btn-primary' if lang == 'ru' else 'btn-ghost' }} btn-sm">RU</a>
+      </div>
+    </div>
+    <p class="text-ink-500 mb-6">{{ t.subtitle }}</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="space-y-2 mb-4">
+          {% for category, message in messages %}
+            <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    <form method="post" class="space-y-4">
+      {{ form.hidden_tag() }}
+      <div>
+        <label class="label">{{ t.full_name }}</label>
+        {{ form.full_name(class_='input') }}
+      </div>
+      <div>
+        <label class="label">{{ t.iin }}</label>
+        {{ form.iin(class_='input') }}
+      </div>
+      <div>
+        <label class="label">{{ t.education }}</label>
+        {{ form.education_level(class_='select') }}
+      </div>
+      <div>
+        <label class="label">{{ t.course_level }}</label>
+        {{ form.course_level(class_='select') }}
+      </div>
+      <div>
+        <label class="label">{{ t.phone }}</label>
+        {{ form.phone(class_='input') }}
+      </div>
+      <div>
+        <label class="label">{{ t.email }}</label>
+        {{ form.email(class_='input') }}
+      </div>
+      <div>
+        <label class="label">{{ t.notes }}</label>
+        {{ form.notes(class_='input') }}
+      </div>
+      <button class="btn-primary w-full">{{ t.submit }}</button>
+    </form>
+    <div class="mt-4">
+      <a href="{{ url_for('auth.login') }}" class="btn-ghost w-full text-center">{{ t.back }}</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,265 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="section-header mb-6">
+  <div>
+    <p class="section-kicker">Seviye Sınavı</p>
+    <h2 class="font-display text-2xl">Sınav Yönetimi</h2>
+    <p class="section-subtitle">Sınav grupları, prompt ayarları ve soru listesi.</p>
+  </div>
+</div>
+
+<div class="stat-grid md:grid-cols-3 mb-6">
+  <div class="stat-card">
+    <div class="stat-label">Aktif Grup</div>
+    <div class="stat-value">{{ active_group or 'Seçilmedi' }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Toplam Grup</div>
+    <div class="stat-value">{{ total_groups }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Toplam Soru</div>
+    <div class="stat-value">{{ total_questions }}</div>
+  </div>
+</div>
+
+<div class="section-header mb-3">
+  <div>
+    <h3 class="font-display text-lg">Sınav Grupları</h3>
+    <p class="section-subtitle">Aktif grubu seçin ve sınavı o gruptan yürütün.</p>
+  </div>
+</div>
+
+<form method="post" class="card p-6 mb-6 max-w-3xl space-y-4">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div>
+    <label class="label">Aktif Grup</label>
+    <select name="placement_active_group" class="select">
+      <option value="">Seçilmedi</option>
+      {% for g in groups %}
+        <option value="{{ g.name }}" {% if active_group == g.name %}selected{% endif %}>{{ g.name }} ({{ g.count }})</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn-primary">Kaydet</button>
+</form>
+
+<div class="section-header mb-3">
+  <div>
+    <h3 class="font-display text-lg">Soru Listesi</h3>
+    <p class="section-subtitle">Seçili gruptan soruları filtreleyin ve yönetin.</p>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('admin.delete_many_placement_questions') }}" class="card p-5 mb-6 space-y-4" data-bulk-delete-form>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="flex flex-wrap items-center gap-3">
+    <label class="flex items-center gap-2 text-sm text-ink-600">
+      <input type="checkbox" class="checkbox" data-select-all>
+      Tümünü seç
+    </label>
+    <span class="text-sm text-ink-600">Seçili: <strong data-selected-count>0</strong></span>
+  </div>
+  <div class="grid gap-3 md:grid-cols-3">
+    <div>
+      <label class="label">Onay Şifresi</label>
+      <input type="password" name="password" class="input" placeholder="Admin şifresi" required>
+    </div>
+    <div class="md:col-span-2 flex items-end gap-3">
+      <label class="flex items-center gap-2 text-sm text-ink-600">
+        <input type="checkbox" name="confirm" value="yes" class="checkbox" required>
+        Seçili soruları silmeyi onaylıyorum.
+      </label>
+      <button class="btn-danger">Seçilileri Sil</button>
+    </div>
+  </div>
+  <div class="text-xs text-ink-500">Not: Sınavda kullanılmış sorular silinmez.</div>
+</form>
+
+<form method="get" class="filter-card form-grid mb-6 md:grid-cols-4">
+  <div>
+    <label class="label">Grup</label>
+    <select name="group" class="select">
+      <option value="">Tümü</option>
+      {% for g in groups %}
+        <option value="{{ g.name }}" {% if selected_group == g.name %}selected{% endif %}>{{ g.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Beceri</label>
+    <select name="skill" class="select">
+      <option value="">Tümü</option>
+      <option value="reading" {% if skill == 'reading' %}selected{% endif %}>Okuma</option>
+      <option value="grammar" {% if skill == 'grammar' %}selected{% endif %}>Dilbilgisi</option>
+      <option value="vocab" {% if skill == 'vocab' %}selected{% endif %}>Kelime</option>
+      <option value="usage" {% if skill == 'usage' %}selected{% endif %}>İletişim</option>
+    </select>
+  </div>
+  <div>
+    <label class="label">Seviye</label>
+    <select name="difficulty" class="select">
+      <option value="">Tümü</option>
+      {% for level in ['A1','A2','B1','B2','C1'] %}
+        <option value="{{ level }}" {% if difficulty == level %}selected{% endif %}>{{ level }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Arama</label>
+    <input type="text" name="q" class="input" value="{{ search }}" placeholder="Soru metni">
+  </div>
+  <div class="md:col-span-4 flex items-end gap-2">
+    <button class="btn-primary">Filtrele</button>
+    <a href="{{ url_for('admin.placement_management') }}" class="btn-ghost">Temizle</a>
+  </div>
+</form>
+
+<div class="space-y-4 mb-10">
+  {% for item in items %}
+    <div class="card p-5">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <label class="flex items-center gap-2 text-sm text-ink-600 mb-2">
+            <input type="checkbox" class="checkbox" value="{{ item.id }}" data-question-checkbox>
+            Bu soruyu seç
+          </label>
+          <div class="text-xs uppercase tracking-wide text-ink-400">{{ item.group_name }} · {{ item.skill }} · {{ item.difficulty }}</div>
+          <div class="text-base text-ink-900 mt-1">{{ item.prompt }}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="badge badge-success">Aktif</span>
+        </div>
+      </div>
+      <div class="mt-4 grid gap-2">
+        {% for opt in item.options %}
+          <div class="rounded-lg border border-ink-100 px-3 py-2 text-sm {% if loop.index0 == item.correct_index %}bg-emerald-50 border-emerald-200 text-emerald-900{% endif %}">
+            {{ opt }}
+          </div>
+        {% endfor %}
+      </div>
+      {% if item.explanation %}
+        <div class="mt-3 text-sm text-ink-600">Açıklama: {{ item.explanation }}</div>
+      {% endif %}
+      <div class="mt-4 flex items-center gap-2">
+        <form method="post" action="{{ url_for('admin.deactivate_placement_question', question_id=item.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn-secondary btn-sm">Pasif Yap</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.delete_placement_question', question_id=item.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn-danger btn-sm">Sil</button>
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <div class="card p-6 text-ink-500">Kayıt bulunmuyor.</div>
+  {% endfor %}
+</div>
+
+<div class="section-header mb-3">
+  <div>
+    <h3 class="font-display text-lg">Prompt Ayarları</h3>
+    <p class="section-subtitle">Varsayılan prompt her zaman kullanılır; özel prompt ek bilgi olarak eklenir.</p>
+  </div>
+</div>
+
+<form method="post" class="card p-6 space-y-4 max-w-3xl">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div>
+    <label class="label">Prompt Profili</label>
+    <select name="placement_prompt_mode" class="select">
+      {% set current_mode = settings.get('placement_prompt_mode','standard') %}
+      <option value="standard" {% if current_mode == 'standard' %}selected{% endif %}>Standart</option>
+      <option value="strict_quality" {% if current_mode == 'strict_quality' %}selected{% endif %}>Kaliteyi Sıkılaştır</option>
+    </select>
+  </div>
+  <div>
+    <label class="label">Özel Prompt (Opsiyonel)</label>
+    <textarea name="placement_prompt_override" rows="8" class="textarea" placeholder="Varsayılan prompta eklenecek notlar...">{{ settings.get('placement_prompt_override','') }}</textarea>
+    <p class="text-sm text-ink-500 mt-2">Bu alan doluysa varsayılan prompta “Ek bilgi” olarak eklenir.</p>
+  </div>
+  <button class="btn-primary">Kaydet</button>
+</form>
+
+<div class="section-header mt-8 mb-3">
+  <div>
+    <h3 class="font-display text-lg">Yeni Sınav Üret</h3>
+    <p class="section-subtitle">Yeni grup oluşturur, isterseniz aktif yapar.</p>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('admin.placement_refresh_pool_admin') }}" class="card p-6 max-w-3xl space-y-4" data-refresh-form>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="grid gap-4 md:grid-cols-3">
+    <div>
+      <label class="label">Soru Sayısı</label>
+      <input type="number" name="count" class="input" value="30" min="10" max="100">
+    </div>
+    <div class="md:col-span-2 flex items-end gap-2">
+      <label class="flex items-center gap-2 text-sm text-ink-600">
+        <input type="checkbox" name="set_active" class="checkbox" checked>
+        Yeni grubu aktif yap
+      </label>
+    </div>
+  </div>
+  <div class="flex items-center gap-3">
+    <button class="btn-secondary" data-refresh-button>Yeni Sınav Üret</button>
+    <span class="text-sm text-ink-500">Bu işlem 30–120 sn sürebilir.</span>
+  </div>
+  <div class="text-sm text-ink-600 hidden" data-refresh-status>İşlem başlatıldı, lütfen bekleyin…</div>
+</form>
+
+<script>
+  const refreshForm = document.querySelector("[data-refresh-form]");
+  if (refreshForm) {
+    refreshForm.addEventListener("submit", () => {
+      const button = refreshForm.querySelector("[data-refresh-button]");
+      const status = refreshForm.querySelector("[data-refresh-status]");
+      if (button) {
+        button.disabled = true;
+        button.textContent = "İşleniyor...";
+        button.classList.add("is-loading");
+      }
+      if (status) {
+        status.classList.remove("hidden");
+      }
+    });
+  }
+
+  const bulkForm = document.querySelector("[data-bulk-delete-form]");
+  const selectAll = document.querySelector("[data-select-all]");
+  const countEl = document.querySelector("[data-selected-count]");
+  const checkboxes = Array.from(document.querySelectorAll("[data-question-checkbox]"));
+  const updateCount = () => {
+    const selected = checkboxes.filter((cb) => cb.checked);
+    if (countEl) {
+      countEl.textContent = selected.length.toString();
+    }
+    if (selectAll) {
+      selectAll.checked = selected.length > 0 && selected.length === checkboxes.length;
+      selectAll.indeterminate = selected.length > 0 && selected.length < checkboxes.length;
+    }
+  };
+  if (selectAll) {
+    selectAll.addEventListener("change", () => {
+      checkboxes.forEach((cb) => { cb.checked = selectAll.checked; });
+      updateCount();
+    });
+  }
+  checkboxes.forEach((cb) => cb.addEventListener("change", updateCount));
+  updateCount();
+  if (bulkForm) {
+    bulkForm.addEventListener("submit", () => {
+      bulkForm.querySelectorAll("input[name='question_ids']").forEach((el) => el.remove());
+      checkboxes.filter((cb) => cb.checked).forEach((cb) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "question_ids";
+        input.value = cb.value;
+        bulkForm.appendChild(input);
+      });
+    });
+  }
+</script>
+{% endblock %}

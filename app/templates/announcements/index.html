@@ -2,8 +2,7 @@
 {% block content %}
 <div class="flex items-center justify-between mb-6">
   <div>
-    <h2 class="font-display text-2xl">Duyurular</h2>
-    <p class="text-ink-500">Ataşelik tarafından yapılan genel duyurular.</p>
+    <h2 class="font-display text-2xl">Ataşelik Duyuruları</h2>
   </div>
 </div>
 
@@ -22,19 +21,98 @@
 {% endif %}
 
 <div class="card p-6">
-  <h3 class="font-display text-xl mb-4">Yayınlanan Duyurular</h3>
-  <div class="space-y-3">
+  <form method="post" action="{{ url_for('announcements.delete_many_announcements') }}" id="bulkAnnouncementForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="password" id="bulkAnnouncementPassword">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display text-xl">Yayınlanan Duyurular</h3>
+      {% if current_user.role in ['admin','attache'] %}
+        <button class="btn-secondary btn-sm" type="button" id="bulkAnnouncementBtn">Seçilenleri Sil</button>
+      {% endif %}
+    </div>
+    <div class="space-y-3">
     {% for item in items %}
       <div class="rounded-2xl border border-ink-100 bg-white p-4">
         <div class="flex items-center justify-between mb-2">
-          <div class="font-semibold">{{ item.user.full_name if item.user else 'Ataşelik' }}</div>
-          <div class="text-xs text-ink-400" data-local-time="{{ item.created_at.isoformat() }}Z"></div>
+          <div class="flex items-center gap-3">
+            {% if current_user.role in ['admin','attache'] %}
+              <input type="checkbox" name="announcement_ids" value="{{ item.id }}">
+            {% endif %}
+            <div class="font-semibold">{{ item.user.full_name if item.user else 'Ataşelik' }}</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="text-xs text-ink-400" data-local-time="{{ item.created_at.isoformat() }}Z"></div>
+            {% if current_user.role in ['admin','attache'] %}
+              <button class="btn-ghost btn-sm"
+                      type="submit"
+                      formaction="{{ url_for('announcements.delete_announcement', announcement_id=item.id) }}"
+                      onclick="return confirm('Duyuru silinsin mi?')">Sil</button>
+            {% endif %}
+          </div>
         </div>
         <div class="text-sm text-ink-900">{{ item.content }}</div>
       </div>
     {% else %}
       <div class="text-ink-400">Henüz duyuru yok.</div>
     {% endfor %}
-  </div>
+    </div>
+  </form>
 </div>
+
+{% if current_user.role in ['admin','attache'] %}
+  <div id="bulkAnnouncementModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-card">
+      <h3 class="font-display text-xl mb-2">Toplu Duyuru Sil</h3>
+      <p class="text-ink-500 text-sm mb-4">Seçilen duyurular kalıcı olarak silinecek.</p>
+      <label class="label mb-2">Şifre</label>
+      <input id="bulkAnnouncementPasswordInput" type="password" class="input w-full mb-4" placeholder="Şifre">
+      <div class="flex items-center justify-end gap-2">
+        <button type="button" class="btn-secondary btn-sm" id="bulkAnnouncementCancel">İptal</button>
+        <button type="button" class="btn-danger btn-sm" id="bulkAnnouncementConfirm">Sil</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    const annBtn = document.getElementById('bulkAnnouncementBtn');
+    const annForm = document.getElementById('bulkAnnouncementForm');
+    const annModal = document.getElementById('bulkAnnouncementModal');
+    const annPwd = document.getElementById('bulkAnnouncementPasswordInput');
+    const annPwdHidden = document.getElementById('bulkAnnouncementPassword');
+    const annCancel = document.getElementById('bulkAnnouncementCancel');
+    const annConfirm = document.getElementById('bulkAnnouncementConfirm');
+
+    const openAnnModal = () => {
+      annModal.classList.add('is-open');
+      annModal.setAttribute('aria-hidden', 'false');
+      annPwd.value = '';
+      annPwd.focus();
+    };
+    const closeAnnModal = () => {
+      annModal.classList.remove('is-open');
+      annModal.setAttribute('aria-hidden', 'true');
+    };
+
+    const updateAnnState = () => {
+      if (!annBtn) return;
+      const hasChecked = annForm.querySelectorAll('input[name="announcement_ids"]:checked').length > 0;
+      annBtn.disabled = !hasChecked;
+    };
+
+    if (annBtn) {
+      annForm.querySelectorAll('input[name="announcement_ids"]').forEach((cb) => {
+        cb.addEventListener('change', updateAnnState);
+      });
+      updateAnnState();
+      annBtn.addEventListener('click', openAnnModal);
+    }
+    annCancel?.addEventListener('click', closeAnnModal);
+    annModal?.addEventListener('click', (e) => { if (e.target === annModal) closeAnnModal(); });
+    annConfirm?.addEventListener('click', () => {
+      const val = annPwd.value.trim();
+      if (!val) return annPwd.focus();
+      annPwdHidden.value = val;
+      annForm.submit();
+    });
+  </script>
+{% endif %}
 {% endblock %}

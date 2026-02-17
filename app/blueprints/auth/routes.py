@@ -13,12 +13,24 @@ auth_bp = Blueprint("auth", __name__)
 _login_attempts = {}
 
 
-def _prune_attempts(ip, window_seconds):
+def _rate_key(ip, username):
+    normalized = (username or "").strip().lower()
+    return f"{ip}:{normalized}"
+
+
+def _get_bucket(key):
+    entry = _login_attempts.get(key)
+    if not entry:
+        entry = {"attempts": deque(), "locked_until": None}
+        _login_attempts[key] = entry
+    return entry
+
+
+def _prune_attempts(entry, window_seconds):
     now = datetime.utcnow()
-    dq = _login_attempts.get(ip, deque())
+    dq = entry["attempts"]
     while dq and (now - dq[0]).total_seconds() > window_seconds:
         dq.popleft()
-    _login_attempts[ip] = dq
     return dq
 
 
@@ -29,8 +41,17 @@ def login():
         ip = request.remote_addr or "unknown"
         window = current_app.config["LOGIN_RATE_LIMIT_WINDOW_SECONDS"]
         max_attempts = current_app.config["LOGIN_RATE_LIMIT_MAX"]
-        dq = _prune_attempts(ip, window)
+        base_lock_seconds = current_app.config["LOGIN_LOCKOUT_BASE_SECONDS"]
+        key = _rate_key(ip, form.username.data)
+        entry = _get_bucket(key)
+        now = datetime.utcnow()
+        if entry["locked_until"] and now < entry["locked_until"]:
+            flash("Çok fazla deneme. Lütfen biraz sonra tekrar deneyin.", "error")
+            return render_template("auth/login.html", form=form)
+        dq = _prune_attempts(entry, window)
         if len(dq) >= max_attempts:
+            lock_seconds = min(900, base_lock_seconds * (2 ** max(0, len(dq) - max_attempts)))
+            entry["locked_until"] = now + timedelta(seconds=lock_seconds)
             flash("Çok fazla deneme. Lütfen biraz sonra tekrar deneyin.", "error")
             return render_template("auth/login.html", form=form)
 
@@ -38,10 +59,14 @@ def login():
         if user and user.is_active and bcrypt.check_password_hash(user.password_hash, form.password.data):
             session.pop("_flashes", None)
             login_user(user)
+            _login_attempts.pop(key, None)
             if user.must_change_password:
                 return redirect(url_for("auth.change_password"))
             return redirect(url_for("dashboard.index"))
-        dq.append(datetime.utcnow())
+        dq.append(now)
+        if len(dq) >= max_attempts:
+            lock_seconds = min(900, base_lock_seconds * (2 ** max(0, len(dq) - max_attempts)))
+            entry["locked_until"] = now + timedelta(seconds=lock_seconds)
         remaining = max_attempts - len(dq)
         if not user:
             flash("Kullanıcı adı hatalı.", "error")
