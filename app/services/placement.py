@@ -305,6 +305,7 @@ def _rebalance_correct_indices(questions):
 
 def generate_questions(count=30):
     model = _openai_model()
+    count = int(count or 30)
     base_messages = [
         {
             "role": "system",
@@ -319,6 +320,10 @@ def generate_questions(count=30):
         {
             "role": "user",
             "content": _placement_prompt()
+        },
+        {
+            "role": "user",
+            "content": f"Return exactly {count} questions."
         }
     ]
 
@@ -406,12 +411,14 @@ def _next_group_name():
 
 def create_question_group(count=30, group_name=None):
     group_name = group_name or _next_group_name()
+    count = int(count or 30)
     collected = []
     seen_prompts = set()
     attempts = 0
     while len(collected) < count and attempts < 5:
         attempts += 1
-        questions, _ = generate_questions(count=count)
+        batch_count = min(15, count - len(collected))
+        questions, _ = generate_questions(count=batch_count)
         for q in questions:
             key = (q.get("prompt") or "").strip().lower()
             if not key or key in seen_prompts:
