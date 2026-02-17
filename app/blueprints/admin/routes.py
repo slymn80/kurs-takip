@@ -460,6 +460,14 @@ def placement_management():
         except Exception:
             generation_status = {"state": "unknown", "message": raw_status}
     prompt_history = PlacementPromptHistory.query.order_by(PlacementPromptHistory.created_at.desc()).limit(50).all()
+    prompt_history_view = []
+    for idx, item in enumerate(prompt_history):
+        prompt_history_view.append({
+            "id": item.id,
+            "created_at": item.created_at,
+            "prompt_text": item.prompt_text,
+            "is_active": idx == 0
+        })
     active_group = settings.get("placement_active_group", "")
     selected_group = group_filter or active_group
     query = PlacementQuestion.query.filter(PlacementQuestion.is_active.is_(True))
@@ -511,7 +519,7 @@ def placement_management():
     return render_template(
         "admin/placement_management.html",
         settings=settings,
-        prompt_history=prompt_history,
+        prompt_history=prompt_history_view,
         items=view_items,
         groups=groups,
         selected_group=selected_group,
@@ -543,6 +551,50 @@ def placement_prompt_use(history_id):
     db.session.add(AuditLog(actor_user_id=current_user.id, action="update", entity_type="placement_prompt", entity_id=item.id))
     db.session.commit()
     flash("Prompt güncellendi.", "success")
+    return redirect(url_for("admin.placement_management"))
+
+
+@admin_bp.route("/placement-prompt/<int:history_id>/delete", methods=["POST"])
+@login_required
+@require_roles("admin")
+def placement_prompt_delete(history_id):
+    item = PlacementPromptHistory.query.get_or_404(history_id)
+    db.session.delete(item)
+    db.session.add(AuditLog(
+        actor_user_id=current_user.id,
+        action="delete",
+        entity_type="placement_prompt",
+        entity_id=item.id
+    ))
+    db.session.commit()
+    flash("Prompt geçmiş kaydı silindi.", "success")
+    return redirect(url_for("admin.placement_management"))
+
+
+@admin_bp.route("/placement-prompt/delete-all", methods=["POST"])
+@login_required
+@require_roles("admin")
+def placement_prompt_delete_all():
+    password = request.form.get("password", "")
+    confirm = request.form.get("confirm", "")
+    if not bcrypt.check_password_hash(current_user.password_hash, password):
+        flash("Şifre hatalı.", "error")
+        return redirect(url_for("admin.placement_management"))
+    if confirm != "yes":
+        flash("Toplu silme için onay kutusunu işaretleyin.", "error")
+        return redirect(url_for("admin.placement_management"))
+
+    count = PlacementPromptHistory.query.count()
+    PlacementPromptHistory.query.delete()
+    db.session.add(AuditLog(
+        actor_user_id=current_user.id,
+        action="delete",
+        entity_type="placement_prompt",
+        entity_id=0,
+        after_json=serialize_json({"deleted_count": count})
+    ))
+    db.session.commit()
+    flash("Tüm prompt geçmişi silindi.", "success")
     return redirect(url_for("admin.placement_management"))
 
 
