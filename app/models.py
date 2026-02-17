@@ -118,7 +118,7 @@ class Enrollment(db.Model):
     __tablename__ = "enrollments"
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=False)
-    student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=True)
     enrolled_at = db.Column(db.DateTime, default=now_utc)
     status = db.Column(db.String(20), default="active")
 
@@ -158,7 +158,7 @@ class Attendance(db.Model):
     __tablename__ = "attendance"
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.Integer, db.ForeignKey("sessions.id"), nullable=False)
-    student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=True)
     status = db.Column(db.String(20), nullable=False)
     note = db.Column(db.Text)
     marked_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)

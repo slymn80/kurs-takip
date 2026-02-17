@@ -1,7 +1,8 @@
 ﻿from dotenv import load_dotenv
 load_dotenv()
 
-from flask import Flask
+from flask import Flask, request, flash, redirect, url_for, jsonify
+from werkzeug.exceptions import Forbidden
 from .config import Config
 from .extensions import db, login_manager, bcrypt, migrate, csrf
 from .models import User
@@ -71,5 +72,12 @@ def create_app(config_class=Config):
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         return response
+
+    @app.errorhandler(Forbidden)
+    def handle_forbidden(_error):
+        if request.path.startswith("/api"):
+            return jsonify({"error": "forbidden"}), 403
+        flash("Bu işlem için yetkiniz yok.", "error")
+        return redirect(request.referrer or url_for("dashboard.index"))
 
     return app

@@ -4,6 +4,7 @@ from sqlalchemy import func
 import secrets
 import string
 from flask import Blueprint, render_template, redirect, url_for, request, flash, session
+from sqlalchemy.exc import IntegrityError
 from flask_login import login_required, current_user
 from ...extensions import db, bcrypt
 from ...models import (
@@ -11,6 +12,12 @@ from ...models import (
     SystemSetting,
     AuditLog,
     Course,
+    Teacher,
+    Attendance,
+    Message,
+    Announcement,
+    Certificate,
+    CourseLedgerEntry,
     ApiToken,
     PlacementQuestion,
     PreRegistration,
@@ -146,6 +153,32 @@ def delete_user(user_id):
     if user.id == current_user.id:
         flash("Kendi hesabınızı silemezsiniz.", "error")
         return redirect(url_for("admin.users"))
+    blockers = []
+    if Course.query.filter_by(created_by_user_id=user.id).first():
+        blockers.append("oluşturduğu kurslar")
+    if Course.query.filter_by(teacher_user_id=user.id).first():
+        blockers.append("atanmış kurslar")
+    if Teacher.query.filter_by(user_id=user.id).first():
+        blockers.append("öğretmen kaydı")
+    if Attendance.query.filter_by(marked_by_user_id=user.id).first():
+        blockers.append("yoklama kayıtları")
+    if Message.query.filter_by(user_id=user.id).first():
+        blockers.append("mesajlar")
+    if Announcement.query.filter_by(user_id=user.id).first():
+        blockers.append("duyurular")
+    if Certificate.query.filter_by(issued_by_user_id=user.id).first():
+        blockers.append("sertifikalar")
+    if CourseLedgerEntry.query.filter_by(teacher_user_id=user.id).first():
+        blockers.append("kurs defteri kayıtları")
+    if ApiToken.query.filter_by(user_id=user.id).first():
+        blockers.append("API tokenlar")
+    if blockers:
+        flash(
+            "Bu kullanıcı silinemiyor. İlişkili kayıtlar var: " + ", ".join(blockers) +
+            ". Kullanıcıyı pasif yapın.",
+            "error"
+        )
+        return redirect(url_for("admin.users"))
     logs = AuditLog.query.filter_by(actor_user_id=user.id).all()
     if logs:
         for log in logs:
@@ -154,8 +187,12 @@ def delete_user(user_id):
             log.actor_user_id = None
             db.session.add(log)
     db.session.delete(user)
-    db.session.commit()
-    flash("Kullanıcı silindi.", "success")
+    try:
+        db.session.commit()
+        flash("Kullanıcı silindi.", "success")
+    except IntegrityError:
+        db.session.rollback()
+        flash("Kullanıcı silinemedi. İlişkili kayıtlar var. Lütfen kullanıcıyı pasif yapın.", "error")
     return redirect(url_for("admin.users"))
 
 

@@ -4,8 +4,9 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from ...extensions import db
+from sqlalchemy.exc import IntegrityError
 from ...models import Organization, Location, CourseType, Teacher, User, Student, AuditLog
-from ...models import Course, Enrollment
+from ...models import Course, Enrollment, Attendance, PreRegistration, CourseLedgerEntry
 from ...forms import OrganizationForm, LocationForm, CourseTypeForm, TeacherForm, StudentForm
 from ...security import require_roles
 from ...utils import serialize_json
@@ -452,20 +453,29 @@ def students():
 @require_roles("admin")
 def delete_student(student_id):
     student = Student.query.get_or_404(student_id)
-    active_course = (
-        db.session.query(Course)
-        .join(Enrollment, Enrollment.course_id == Course.id)
-        .filter(Enrollment.student_id == student.id, Enrollment.status == "active", Course.status == "active")
-        .first()
+    Enrollment.query.filter_by(student_id=student.id).update(
+        {Enrollment.student_id: None},
+        synchronize_session=False
     )
-    if active_course:
-        flash("Bu kursiyer aktif kurslara kayıtlı. Önce aktif kayıtları kaldırın.", "error")
-        return redirect(url_for("definitions.students"))
-
-    student.is_active = False
-    db.session.add(student)
-    db.session.commit()
-    flash("Kursiyer pasif hale getirildi.", "success")
+    Attendance.query.filter_by(student_id=student.id).update(
+        {Attendance.student_id: None},
+        synchronize_session=False
+    )
+    PreRegistration.query.filter_by(student_id=student.id).update(
+        {PreRegistration.student_id: None},
+        synchronize_session=False
+    )
+    CourseLedgerEntry.query.filter_by(student_id=student.id).update(
+        {CourseLedgerEntry.student_id: None},
+        synchronize_session=False
+    )
+    db.session.delete(student)
+    try:
+        db.session.commit()
+        flash("Kursiyer silindi. Geçmiş kayıtlar korunmuştur.", "success")
+    except IntegrityError:
+        db.session.rollback()
+        flash("Kursiyer silinemedi. İlişkili kayıtlar var.", "error")
     return redirect(url_for("definitions.students"))
 
 
