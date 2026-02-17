@@ -9,7 +9,7 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from ...extensions import db, bcrypt
-from ...models import Course, Organization, CourseType, Location, Teacher, User, Student, Enrollment, Session, Attendance, AuditLog
+from ...models import Course, Organization, CourseType, Location, Teacher, User, Student, Enrollment, Session, Attendance, AuditLog, CourseExamResult
 from ...forms import CourseForm, SessionForm
 from ...security import require_roles
 from ...utils import generate_sessions, serialize_json, absence_ratio
@@ -292,9 +292,21 @@ def delete_course(course_id):
 @login_required
 def course_detail(course_id):
     course = _course_query_for_user().filter_by(id=course_id).first_or_404()
-    enrollments = Enrollment.query.filter_by(course_id=course.id, status="active").all()
+    enrollments = (
+        Enrollment.query
+        .filter_by(course_id=course.id, status="active")
+        .filter(Enrollment.student_id.isnot(None))
+        .all()
+    )
     sessions = Session.query.filter_by(course_id=course.id).order_by(Session.session_date.asc()).all()
     total_enrolled = len(enrollments)
+    last_session = sessions[-1] if sessions else None
+    exam_results = {}
+    if enrollments:
+        results = CourseExamResult.query.filter(
+            CourseExamResult.enrollment_id.in_([e.id for e in enrollments])
+        ).all()
+        exam_results = {r.enrollment_id: r for r in results}
     session_ids = [s.id for s in sessions]
     attended_counts = {}
     if session_ids:
@@ -307,11 +319,12 @@ def course_detail(course_id):
         ).group_by(Attendance.session_id).all()
         attended_counts = {session_id: count for session_id, count in rows}
     if current_user.role == "teacher":
-        students = [e.student for e in enrollments]
+        students = [e.student for e in enrollments if e.student and e.student.is_active]
     else:
         active_student_ids = db.session.query(Enrollment.student_id).filter(Enrollment.status == "active")
         students = (
             Student.query
+            .filter(Student.is_active.is_(True))
             .filter(~Student.id.in_(active_student_ids))
             .order_by(Student.full_name)
             .all()
@@ -321,10 +334,69 @@ def course_detail(course_id):
         course=course,
         enrollments=enrollments,
         sessions=sessions,
+        last_session=last_session,
+        exam_results=exam_results,
         students=students,
         total_enrolled=total_enrolled,
         attended_counts=attended_counts
     )
+
+
+@courses_bp.route("/<int:course_id>/exam-results", methods=["POST"])
+@login_required
+@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+def save_exam_results(course_id):
+    course = _course_query_for_user().filter_by(id=course_id).first_or_404()
+    enrollments = (
+        Enrollment.query
+        .filter_by(course_id=course.id, status="active")
+        .filter(Enrollment.student_id.isnot(None))
+        .all()
+    )
+    missing_score = []
+    changed = 0
+    for enrollment in enrollments:
+        score_raw = request.form.get(f"score_{enrollment.id}")
+        status_raw = request.form.get(f"status_{enrollment.id}")
+        if score_raw is None and status_raw is None:
+            continue
+        score = None
+        if score_raw is not None and score_raw != "":
+            try:
+                score = float(score_raw)
+            except ValueError:
+                score = None
+        passed = None
+        if status_raw == "passed":
+            if score is None:
+                missing_score.append(enrollment.student.full_name)
+                continue
+            passed = True
+        elif status_raw == "failed":
+            passed = False
+
+        result = CourseExamResult.query.filter_by(enrollment_id=enrollment.id).first()
+        if not result:
+            result = CourseExamResult(enrollment_id=enrollment.id)
+        if score is not None:
+            result.score = score
+        if passed is not None:
+            result.passed = passed
+        result.evaluated_at = datetime.utcnow()
+        result.evaluated_by_user_id = current_user.id
+        db.session.add(result)
+        changed += 1
+
+    if missing_score:
+        flash("Başarılı seçimi için sınav puanı girilmelidir: " + ", ".join(missing_score), "error")
+        return redirect(url_for("courses.course_detail", course_id=course.id))
+
+    if changed:
+        db.session.commit()
+        flash("Değerlendirmeler kaydedildi.", "success")
+    else:
+        flash("Kaydedilecek değerlendirme bulunamadı.", "info")
+    return redirect(url_for("courses.course_detail", course_id=course.id))
 
 
 @courses_bp.route("/<int:course_id>/enroll", methods=["POST"])
@@ -332,7 +404,11 @@ def course_detail(course_id):
 @require_roles("coordinator", "principal", "attache", "admin")
 def enroll_student(course_id):
     course = _course_query_for_user().filter_by(id=course_id).first_or_404()
-    student_id = int(request.form.get("student_id"))
+    student_id = int(request.form.get("student_id") or 0)
+    student = Student.query.filter_by(id=student_id, is_active=True).first()
+    if not student:
+        flash("Geçersiz kursiyer seçimi.", "error")
+        return redirect(url_for("courses.course_detail", course_id=course.id))
     existing = Enrollment.query.filter_by(course_id=course.id, student_id=student_id).first()
     if existing:
         flash("Bu kursiyer zaten kay?tl?.", "error")

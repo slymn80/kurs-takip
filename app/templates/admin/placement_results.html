@@ -1,0 +1,181 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div class="section-header mb-6">
+  <div>
+    <p class="section-kicker">Seviye Sınavı</p>
+    <h2 class="font-display text-2xl">Sınav Sonuçları</h2>
+    <p class="section-subtitle">Giren kişi, sınav grubu ve sonuç bilgileri.</p>
+  </div>
+</div>
+
+<div class="stat-grid md:grid-cols-3 mb-6">
+  <div class="stat-card">
+    <div class="stat-label">Toplam Sınav</div>
+    <div class="stat-value">{{ total_tests }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Ortalama Skor</div>
+    <div class="stat-value">{{ avg_score }}%</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Sonuç Listesi</div>
+    <div class="stat-value">{{ items|length }}</div>
+  </div>
+</div>
+
+<form method="get" class="filter-card form-grid mb-6 md:grid-cols-6">
+  <div>
+    <label class="label">Arama</label>
+    <input type="text" name="q" class="input" value="{{ search }}" placeholder="Ad veya IIN">
+  </div>
+  <div>
+    <label class="label">Grup</label>
+    <select name="group" class="select">
+      <option value="">Tümü</option>
+      {% for g in groups %}
+        <option value="{{ g }}" {% if group_filter == g %}selected{% endif %}>{{ g }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Seviye</label>
+    <select name="level" class="select">
+      <option value="">Tümü</option>
+      {% for level in ['A1','A2','B1','B2','C1'] %}
+        <option value="{{ level }}" {% if level_filter == level %}selected{% endif %}>{{ level }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label class="label">Skor Min</label>
+    <input type="number" name="min_score" class="input" value="{{ min_score }}" min="0" max="100" step="0.1">
+  </div>
+  <div>
+    <label class="label">Skor Max</label>
+    <input type="number" name="max_score" class="input" value="{{ max_score }}" min="0" max="100" step="0.1">
+  </div>
+  <div>
+    <label class="label">Tarih (YYYY-MM-DD)</label>
+    <input type="text" name="from" class="input" value="{{ date_from }}" placeholder="Başlangıç">
+  </div>
+  <div>
+    <label class="label">Tarih (YYYY-MM-DD)</label>
+    <input type="text" name="to" class="input" value="{{ date_to }}" placeholder="Bitiş">
+  </div>
+  <div class="md:col-span-6 flex items-end gap-2">
+    <button class="btn-primary">Filtrele</button>
+    <a href="{{ url_for('admin.placement_results') }}" class="btn-ghost">Temizle</a>
+  </div>
+</form>
+
+<div class="table-card">
+  <div class="table-toolbar">
+    <div class="text-sm text-ink-500">Son 200 kayıt</div>
+  </div>
+  <form method="post" action="{{ url_for('admin.delete_many_placement_results') }}" class="p-4 border-b border-ink-100 space-y-4" data-bulk-results-form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="flex flex-wrap items-center gap-3">
+      <label class="flex items-center gap-2 text-sm text-ink-600">
+        <input type="checkbox" class="checkbox" data-select-all-results>
+        Tümünü seç
+      </label>
+      <span class="text-sm text-ink-600">Seçili: <strong data-selected-count>0</strong></span>
+    </div>
+    <div class="grid gap-3 md:grid-cols-3">
+      <div>
+        <label class="label">Onay Şifresi</label>
+        <input type="password" name="password" class="input" placeholder="Admin şifresi" required>
+      </div>
+      <div class="md:col-span-2 flex items-end gap-3">
+        <label class="flex items-center gap-2 text-sm text-ink-600">
+          <input type="checkbox" name="confirm" value="yes" class="checkbox" required>
+          Seçili sonuçları silmeyi onaylıyorum.
+        </label>
+        <button class="btn-danger">Seçilileri Sil</button>
+      </div>
+    </div>
+  </form>
+  <table class="table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Kişi</th>
+        <th>IIN</th>
+        <th>Başladı</th>
+        <th>Bitti</th>
+        <th>Skor</th>
+        <th>Seviye</th>
+        <th>Soru</th>
+        <th>Grup</th>
+        <th>Model</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+        <tr>
+          <td>
+            <input type="checkbox" class="checkbox" value="{{ item.id }}" data-result-checkbox>
+          </td>
+          <td>{{ item.candidate }}</td>
+          <td>{{ item.iin }}</td>
+          <td>{{ item.started_at }}</td>
+          <td>{{ item.completed_at or '-' }}</td>
+          <td>{{ item.score_percent or 0 }}%</td>
+          <td>{{ item.level or '-' }}</td>
+          <td>{{ item.total_questions or 0 }}</td>
+          <td>{{ item.group_name }}</td>
+          <td>{{ item.model_used or '-' }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin.delete_placement_result', test_id=item.id) }}" onsubmit="return confirm('Bu sonucu silmek istiyor musunuz?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn-danger btn-sm">Sil</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="11" class="text-ink-500">Kayıt bulunmuyor.</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const bulkForm = document.querySelector("[data-bulk-results-form]");
+  const selectAll = document.querySelector("[data-select-all-results]");
+  const countEl = document.querySelector("[data-selected-count]");
+  const checkboxes = Array.from(document.querySelectorAll("[data-result-checkbox]"));
+  const updateCount = () => {
+    const selected = checkboxes.filter((cb) => cb.checked);
+    if (countEl) {
+      countEl.textContent = selected.length.toString();
+    }
+    if (selectAll) {
+      selectAll.checked = selected.length > 0 && selected.length === checkboxes.length;
+      selectAll.indeterminate = selected.length > 0 && selected.length < checkboxes.length;
+    }
+  };
+  if (selectAll) {
+    selectAll.addEventListener("change", () => {
+      checkboxes.forEach((cb) => { cb.checked = selectAll.checked; });
+      updateCount();
+    });
+  }
+  checkboxes.forEach((cb) => cb.addEventListener("change", updateCount));
+  updateCount();
+  if (bulkForm) {
+    bulkForm.addEventListener("submit", () => {
+      bulkForm.querySelectorAll("input[name='test_ids']").forEach((el) => el.remove());
+      checkboxes.filter((cb) => cb.checked).forEach((cb) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "test_ids";
+        input.value = cb.value;
+        bulkForm.appendChild(input);
+      });
+    });
+  }
+</script>
+{% endblock %}

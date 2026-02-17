@@ -3,8 +3,26 @@
 <div class="grid lg:grid-cols-3 gap-6">
   <div class="card p-6 lg:col-span-1">
     <h2 class="font-display text-xl mb-4">Yeni Kursiyer</h2>
+    <form method="get" class="mb-4">
+      <label class="label">Ön Kayıt Seç</label>
+      <div class="flex gap-2">
+        <select name="prereg_id" class="select flex-1">
+          <option value="">Seçilmedi</option>
+          {% for p in approved_preregs %}
+            <option value="{{ p.id }}" {% if selected_prereg and selected_prereg.id == p.id %}selected{% endif %}>
+              {{ p.full_name }} · {{ p.iin }}
+            </option>
+          {% endfor %}
+        </select>
+        <button class="btn-secondary">Getir</button>
+      </div>
+      <p class="text-xs text-ink-500 mt-2">Onaylı ön kayıtlar buradan çekilir.</p>
+    </form>
     <form method="post" enctype="multipart/form-data" class="space-y-3">
       {{ form.hidden_tag() }}
+      {% if selected_prereg %}
+        <input type="hidden" name="prereg_id" value="{{ selected_prereg.id }}">
+      {% endif %}
       <div>
         <label class="label">Ad Soyad</label>
         {{ form.full_name(class_='input') }}
@@ -54,10 +72,11 @@
   <div class="card p-6 lg:col-span-2">
     <h2 class="font-display text-xl mb-4">Kursiyerler</h2>
     <table class="table">
-      <thead><tr><th>Ad</th><th>IIN/TC</th><th>Eğitim</th><th>Telefon</th><th>Fotoğraf</th><th></th></tr></thead>
+      <thead><tr><th>No</th><th>Ad</th><th>IIN/TC</th><th>Eğitim</th><th>Telefon</th><th>Fotoğraf</th><th></th></tr></thead>
       <tbody>
         {% for item in items %}
         <tr>
+          <td>{{ loop.index }}</td>
           <td>{{ item.full_name }}</td>
           <td>{{ item.iin }}</td>
           <td>{{ item.education_level }}</td>

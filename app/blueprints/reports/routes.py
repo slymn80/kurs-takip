@@ -9,7 +9,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from openpyxl import Workbook
 from sqlalchemy import or_
-from ...models import Course, Enrollment, Student, Teacher, Organization, Certificate, AuditLog, CourseLedgerEntry
+from ...models import Course, Enrollment, Student, Teacher, Organization, Certificate, AuditLog, CourseLedgerEntry, CourseExamResult
 from ...extensions import db
 from ...utils import serialize_json
 from ...security import require_roles
@@ -269,6 +269,11 @@ def _certificate_pdf(certificate):
     c.setFont(font_name, 20)
     c.drawCentredString(width / 2, height - 210, student.full_name)
 
+    c.setFont(font_name, 14)
+    c.setFillColorRGB(0.89, 0.04, 0.09)
+    c.drawCentredString(width / 2, height - 235, "BAŞARILI")
+    c.setFillColorRGB(0.0, 0.0, 0.0)
+
     c.setFont(font_name, 12)
     course_name = course.title
     course_dates = f"{course.start_date.strftime('%d.%m.%Y')} - {course.end_date.strftime('%d.%m.%Y')}"
@@ -455,9 +460,16 @@ def certificates():
     search = (request.args.get("q") or "").strip()
     courses = Course.query.filter(Course.status == "ended").order_by(Course.created_at.desc()).all()
 
-    enrollments_query = Enrollment.query.join(Course).join(Student).filter(
-        Course.status == "ended",
-        Enrollment.status == "active"
+    enrollments_query = (
+        Enrollment.query
+        .join(Course)
+        .join(Student)
+        .join(CourseExamResult, CourseExamResult.enrollment_id == Enrollment.id)
+        .filter(
+            Course.status == "ended",
+            Enrollment.status == "active",
+            CourseExamResult.passed.is_(True)
+        )
     )
     if course_id:
         enrollments_query = enrollments_query.filter(Enrollment.course_id == course_id)
@@ -469,6 +481,8 @@ def certificates():
 
     certs = Certificate.query.filter(Certificate.enrollment_id.in_([e.id for e in enrollments])).all()
     cert_map = {c.enrollment_id: c for c in certs}
+    results = CourseExamResult.query.filter(CourseExamResult.enrollment_id.in_([e.id for e in enrollments])).all()
+    result_map = {r.enrollment_id: r for r in results}
 
     return render_template(
         "reports/certificates.html",
@@ -476,7 +490,8 @@ def certificates():
         selected_course_id=course_id or "",
         search=search,
         enrollments=enrollments,
-        cert_map=cert_map
+        cert_map=cert_map,
+        result_map=result_map
     )
 
 

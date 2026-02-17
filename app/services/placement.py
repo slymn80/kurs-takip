@@ -26,41 +26,79 @@ DIFFICULTY_WEIGHT = {
 
 
 DEFAULT_PLACEMENT_PROMPT = (
-    "Create a Turkish placement test question set of 30 questions used to place learners into the correct level. "
-    "Skills: reading, grammar, vocab, usage. "
-    "Distribution: reading 8, grammar 8, vocab 7, usage 7. "
-    "Difficulty distribution: A1 8, A2 8, B1 7, B2 5, C1 2. "
-    "Reading questions must include a short passage in the prompt (2–4 sentences, 120–260 characters). "
-    "Grammar questions must test a single target structure (tense, suffix, or conjunction). "
-    "Vocab questions must test meaning in context; avoid rare/technical words for A1–A2. "
-    "Usage questions must pick the most appropriate expression for the situation (formal vs informal). "
-    "Each question must include: skill, difficulty, prompt, options (4), correct_index, explanation. "
-    "Set audio_url and listening_text to null for all questions. "
-    "Options must be short, natural Turkish phrases (no letters-only or meaningless tokens). "
-    "Explanations must be short and helpful (1-2 sentences) and include a brief reason (e.g., '... çünkü ...'). "
-    "Distractors must be plausible but clearly incorrect for the given prompt. "
-    "Avoid under-specified prompts where multiple options could be correct. "
-    "Write prompts with enough context so that exactly one option is correct and the other three are clearly wrong in that context. "
-    "Options must be mutually exclusive: if more than one could fit, rewrite the prompt. "
-    "Return JSON that matches the provided schema."
+    "EK TALİMAT – TÜRKÇE SEVİYE BELİRLEME SINAVI (PLACEMENT MODE)\n\n"
+    "Bu sınav TEK SEVİYE sınavı değildir.\n"
+    "Model kesinlikle sadece A1 seviyesinde soru üretmeyecektir.\n\n"
+    "ÖNEMLİ KURAL:\n"
+    "Default sistemde yer alan \"A1\", \"başlangıç\", \"kolay\" gibi ifadeleri\n"
+    "seviye kısıtı olarak yorumlama.\n"
+    "Bu sınav bir SEVİYE BELİRLEME SINAVIDIR ve çok seviyeli olmak zorundadır.\n\n"
+    "────────────────────\n\n"
+    "Sınav Yapısı:\n\n"
+    "Toplam 30 soru üret.\n\n"
+    "Seviyeler zorunlu olarak şu sırada gelsin:\n\n"
+    "1–6   → A1\n"
+    "7–12  → A2\n"
+    "13–18 → B1\n"
+    "19–24 → B2\n"
+    "25–30 → C1\n\n"
+    "Seviyeler karışık üretilemez ve tek seviyeye düşürülemez.\n\n"
+    "────────────────────\n\n"
+    "Zorluk Kuralları:\n\n"
+    "A1:\n"
+    "- tek cümle\n"
+    "- günlük kelimeler\n\n"
+    "A2:\n"
+    "- kısa paragraf\n"
+    "- temel zamanlar\n\n"
+    "B1:\n"
+    "- bağlaçlar, neden-sonuç\n"
+    "- kısa okuma parçaları\n\n"
+    "B2:\n"
+    "- çıkarım gerektiren sorular\n"
+    "- daha uzun metin\n\n"
+    "C1:\n"
+    "- akademik veya yarı akademik dil\n"
+    "- yorumlama ve anlam çıkarma\n\n"
+    "────────────────────\n\n"
+    "Format:\n\n"
+    "ÇIKTI SADECE JSON olmalı ve aşağıdaki şemaya uymalıdır.\n"
+    "Her soru şu alanları içermelidir: skill, difficulty, prompt, options, correct_index, explanation, audio_url, listening_text.\n\n"
+    "────────────────────\n\n"
+    "Ek Kurallar:\n\n"
+    "- 4 şıklı olacak.\n"
+    "- Şıklar rastgele dağılsın.\n"
+    "- Her seviyede reading, grammar, vocab, usage dengeli olsun.\n"
+    "- Sorular tekrar etmesin.\n"
+    "- ÇIKTI SADECE JSON olmalı ve şemaya uymalıdır.\n"
+    "- Her soru için kısa bir açıklama yaz (1-2 cümle).\n"
+    "- SADECE sınavı üret.\n\n"
+    "────────────────────\n\n"
+    "KRİTİK TALİMAT:\n\n"
+    "Eğer önceki sistem talimatları tek seviyeye yönlendiriyorsa,\n"
+    "BU TALİMAT onları geçersiz kılar ve çok seviyeli üretim zorunludur.\n"
+    "\n"
+    "JSON formatı (şemaya uygun):\n"
+    "{\n"
+    "  \"questions\": [\n"
+    "    {\n"
+    "      \"skill\": \"reading|grammar|vocab|usage\",\n"
+    "      \"difficulty\": \"A1|A2|B1|B2|C1\",\n"
+    "      \"prompt\": \"...\",\n"
+    "      \"options\": [\"A\", \"B\", \"C\", \"D\"],\n"
+    "      \"correct_index\": 0,\n"
+    "      \"explanation\": \"...\",\n"
+    "      \"audio_url\": null,\n"
+    "      \"listening_text\": null\n"
+    "    }\n"
+    "  ]\n"
+    "}\n"
 )
 
 
-PROMPT_PROFILES = {
-    "standard": "",
-    "strict_quality": (
-        "Be extra strict about ambiguity: if two options could be correct, discard and rewrite the question. "
-        "Ensure reading prompts include a clear main idea and a single correct inference. "
-    )
-}
-
-
 def _placement_prompt():
-    mode = (get_setting("placement_prompt_mode") or "standard").strip()
-    addon = PROMPT_PROFILES.get(mode, "")
     override = (get_setting("placement_prompt_override") or "").strip()
-    extra = f" Ek bilgi: {override}" if override else ""
-    return DEFAULT_PLACEMENT_PROMPT + (f" {addon}" if addon else "") + extra
+    return override or DEFAULT_PLACEMENT_PROMPT
 
 
 def _openai_headers():
@@ -113,7 +151,7 @@ def _is_clean_text(text):
     return _looks_turkish(text)
 
 
-def _clean_questions(items):
+def _clean_questions(items, strict=True):
     if not items:
         return []
     cleaned = []
@@ -138,10 +176,12 @@ def _clean_questions(items):
         if not _is_clean_text(q.get("prompt")):
             continue
         if not _is_clean_text(q.get("explanation")):
-            continue
+            if strict:
+                continue
         explanation = q.get("explanation") or ""
-        if len(explanation.strip()) < 20:
-            continue
+        if len(explanation.strip()) < (20 if strict else 8):
+            if strict:
+                continue
         # Prefer explicit reasoning markers but do not hard-reject if missing.
         if not _looks_turkish(" ".join(options)):
             continue
@@ -149,24 +189,25 @@ def _clean_questions(items):
             continue
         prompt_text = q.get("prompt", "")
         if q.get("skill") == "reading":
-            if len(prompt_text) < 100:
+            if len(prompt_text) < (100 if strict else 60):
                 continue
             sentence_count = sum(1 for ch in prompt_text if ch in ".!?")
-            if sentence_count < 2:
+            if sentence_count < 2 and strict:
                 continue
         if q.get("difficulty") in ["A1", "A2"]:
             lowered_text = (prompt_text + " " + " ".join(options)).lower()
             if any(t in lowered_text for t in technical_banned):
                 continue
-        # Reject options with too much shared non-stopword overlap.
-        word_counts = {}
-        for opt in options:
-            for w in opt.lower().replace("'", " ").split():
-                if w in common_stop or len(w) < 3:
-                    continue
-                word_counts[w] = word_counts.get(w, 0) + 1
-        if word_counts and max(word_counts.values()) >= 4:
-            continue
+        if strict:
+            # Reject options with too much shared non-stopword overlap.
+            word_counts = {}
+            for opt in options:
+                for w in opt.lower().replace("'", " ").split():
+                    if w in common_stop or len(w) < 3:
+                        continue
+                    word_counts[w] = word_counts.get(w, 0) + 1
+            if word_counts and max(word_counts.values()) >= 4:
+                continue
         if q.get("listening_text"):
             continue
         if q.get("audio_url"):
@@ -330,7 +371,9 @@ def generate_questions(count=30):
         if not items:
             last_error = "invalid_format"
             continue
-        cleaned = _clean_questions(items)
+        cleaned = _clean_questions(items, strict=True)
+        if not cleaned:
+            cleaned = _clean_questions(items, strict=False)
         if cleaned:
             cleaned = _rebalance_correct_indices(cleaned)
             return cleaned, model

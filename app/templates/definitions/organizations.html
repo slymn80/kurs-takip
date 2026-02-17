@@ -35,10 +35,11 @@
   <div class="card p-6 lg:col-span-2">
     <h2 class="font-display text-xl mb-4">Kurumlar</h2>
     <table class="table">
-      <thead><tr><th>Ad</th><th>Sorumlu</th><th>Telefon</th><th>E-posta</th><th>Adres</th><th></th></tr></thead>
+      <thead><tr><th>No</th><th>Ad</th><th>Sorumlu</th><th>Telefon</th><th>E-posta</th><th>Adres</th><th></th></tr></thead>
       <tbody>
         {% for item in items %}
         <tr>
+          <td>{{ loop.index }}</td>
           <td>{{ item.name }}</td>
           <td>{{ item.responsible_person }}</td>
           <td>{{ item.phone }}</td>

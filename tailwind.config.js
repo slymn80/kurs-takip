@@ -7,26 +7,26 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        display: ["DM Serif Display", "serif"],
-        sans: ["IBM Plex Sans", "system-ui", "sans-serif"]
+        display: ["Fraunces", "serif"],
+        sans: ["Manrope", "system-ui", "sans-serif"]
       },
       colors: {
         ink: {
-          50: "#f6f2e9",
-          100: "#efe7db",
-          200: "#ddd1c0",
-          300: "#c2b3a0",
-          400: "#9d8b77",
-          500: "#7d6a58",
-          600: "#635243",
-          700: "#3f4f63",
-          800: "#2d3b4d",
-          900: "#1f2a36"
+          50: "#f4f2ed",
+          100: "#ece6db",
+          200: "#d8cdbb",
+          300: "#bda98f",
+          400: "#9a7f63",
+          500: "#7b6148",
+          600: "#5f4a36",
+          700: "#3f4a5a",
+          800: "#2c3b4d",
+          900: "#1c2634"
         },
         accent: {
-          400: "#2f8f6b",
-          500: "#1f6f53",
-          600: "#195b45"
+          400: "#2a8f7b",
+          500: "#20715f",
+          600: "#1b5a4c"
         }
       }
     }

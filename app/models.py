@@ -178,6 +178,16 @@ class SystemSetting(db.Model):
     value = db.Column(db.Text)
 
 
+class PlacementPromptHistory(db.Model):
+    __tablename__ = "placement_prompt_history"
+    id = db.Column(db.Integer, primary_key=True)
+    prompt_text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=now_utc)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+
+    created_by = db.relationship("User")
+
+
 class AuditLog(db.Model):
     __tablename__ = "audit_logs"
     id = db.Column(db.Integer, primary_key=True)
@@ -312,6 +322,19 @@ class PlacementAnswer(db.Model):
 
     test = db.relationship("PlacementTest")
     question = db.relationship("PlacementQuestion")
+
+
+class CourseExamResult(db.Model):
+    __tablename__ = "course_exam_results"
+    id = db.Column(db.Integer, primary_key=True)
+    enrollment_id = db.Column(db.Integer, db.ForeignKey("enrollments.id"), nullable=False, unique=True)
+    score = db.Column(db.Float, nullable=True)
+    passed = db.Column(db.Boolean, default=False)
+    evaluated_at = db.Column(db.DateTime, default=now_utc)
+    evaluated_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
+    enrollment = db.relationship("Enrollment")
+    evaluated_by = db.relationship("User")
 
 
 class Certificate(db.Model):

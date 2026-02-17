@@ -1,8 +1,8 @@
 ﻿<div id="sidebar" class="app-sidebar fixed inset-y-0 left-0 z-40 w-64 transform px-4 py-6 transition-transform duration-300 lg:translate-x-0 -translate-x-full">
   <div class="flex items-center justify-between">
     <div>
-      <p class="text-sm uppercase tracking-wide text-ink-600 font-semibold">Eğitim Ataşeliği</p>
-      <h1 class="font-display text-lg font-normal text-ink-600">Kurs Takip Yazılımı</h1>
+      <p class="text-sm uppercase tracking-wide font-semibold brand-text">Almatı Eğitim Ataşeliği</p>
+      <h1 class="font-display text-lg font-normal brand-subtext">Kurs Takip Otomasyonu</h1>
     </div>
     <button class="lg:hidden" data-close-sidebar>
       <span class="text-ink-500">Kapat</span>
@@ -17,7 +17,9 @@
       <a href="{{ url_for('messages.index') }}" class="nav-link {% if current == 'messages.index' %}nav-link-active{% endif %}">İletişim</a>
       <a href="{{ url_for('stats.index') }}" class="nav-link {% if current and current.startswith('stats.') %}nav-link-active{% endif %}">İstatistikler</a>
       <a href="{{ url_for('reports.index') }}" class="nav-link {% if current == 'reports.index' %}nav-link-active{% endif %}">Raporlar</a>
-      <a href="{{ url_for('reports.certificates') }}" class="nav-link {% if current == 'reports.certificates' %}nav-link-active{% endif %}">Sertifikalar</a>
+      {% if current_user.role != 'teacher' %}
+        <a href="{{ url_for('reports.certificates') }}" class="nav-link {% if current == 'reports.certificates' %}nav-link-active{% endif %}">Sertifikalar</a>
+      {% endif %}
       <a href="{{ url_for('reports.course_ledger') }}" class="nav-link {% if current == 'reports.course_ledger' %}nav-link-active{% endif %}">Kurs Defteri</a>
       <a href="{{ url_for('announcements.index') }}" class="nav-link {% if current and current.startswith('announcements.') %}nav-link-active{% endif %}">Ataşelik Duyuruları</a>
     {% endif %}
@@ -26,7 +28,9 @@
       <a href="{{ url_for('messages.index') }}" class="nav-link {% if current == 'messages.index' %}nav-link-active{% endif %}">İletişim</a>
       <a href="{{ url_for('stats.index') }}" class="nav-link {% if current and current.startswith('stats.') %}nav-link-active{% endif %}">İstatistikler</a>
       <a href="{{ url_for('reports.index') }}" class="nav-link {% if current == 'reports.index' %}nav-link-active{% endif %}">Raporlar</a>
-      <a href="{{ url_for('reports.certificates') }}" class="nav-link {% if current == 'reports.certificates' %}nav-link-active{% endif %}">Sertifikalar</a>
+      {% if current_user.role != 'teacher' %}
+        <a href="{{ url_for('reports.certificates') }}" class="nav-link {% if current == 'reports.certificates' %}nav-link-active{% endif %}">Sertifikalar</a>
+      {% endif %}
       <a href="{{ url_for('reports.course_ledger') }}" class="nav-link {% if current == 'reports.course_ledger' %}nav-link-active{% endif %}">Kurs Defteri</a>
       <a href="{{ url_for('announcements.index') }}" class="nav-link {% if current and current.startswith('announcements.') %}nav-link-active{% endif %}">Ataşelik Duyuruları</a>
     {% endif %}
@@ -41,6 +45,7 @@
       <div class="nav-section-title">Admin</div>
       <a href="{{ url_for('admin.users') }}" class="nav-link {% if current == 'admin.users' %}nav-link-active{% endif %}">Kullanıcılar</a>
       <a href="{{ url_for('admin.placement_management') }}" class="nav-link {% if current == 'admin.placement_management' %}nav-link-active{% endif %}">Seviye Sınavı Yönetimi</a>
+      <a href="{{ url_for('admin.placement_results') }}" class="nav-link {% if current == 'admin.placement_results' %}nav-link-active{% endif %}">Seviye Sınavı Sonuçları</a>
       <a href="{{ url_for('admin.pre_registrations') }}" class="nav-link {% if current == 'admin.pre_registrations' %}nav-link-active{% endif %}">Ön Kayıt Yönetimi</a>
       <a href="{{ url_for('admin.api_tokens') }}" class="nav-link {% if current == 'admin.api_tokens' %}nav-link-active{% endif %}">API Tokenlar</a>
       <a href="{{ url_for('admin.settings') }}" class="nav-link {% if current == 'admin.settings' %}nav-link-active{% endif %}">Ayarlar</a>

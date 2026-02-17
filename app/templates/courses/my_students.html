@@ -14,10 +14,11 @@
     </select>
   </form>
   <table class="table">
-    <thead><tr><th>Kurs</th><th>Ad</th><th>IIN/TC</th><th>Eğitim</th><th>Telefon</th><th></th></tr></thead>
+    <thead><tr><th>No</th><th>Kurs</th><th>Ad</th><th>IIN/TC</th><th>Eğitim</th><th>Telefon</th><th></th></tr></thead>
     <tbody>
       {% for enrollment, student, course in rows %}
       <tr>
+        <td>{{ loop.index }}</td>
         <td>{{ course.title }}</td>
         <td>{{ student.full_name }}</td>
         <td>{{ student.iin }}</td>
@@ -29,7 +30,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="text-ink-400">Kursiyer yok.</td></tr>
+      <tr><td colspan="7" class="text-ink-400">Kursiyer yok.</td></tr>
       {% endfor %}
     </tbody>
   </table>

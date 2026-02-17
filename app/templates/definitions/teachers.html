@@ -52,10 +52,11 @@
     <h2 class="font-display text-xl mb-4">Öğretmenler</h2>
     <table class="table">
       {% set branch_labels = {"turkish":"Türkçe","english":"İngilizce","kazakh":"Kazakça","russian":"Rusça","mathematics":"Matematik","it":"Bilişim Teknolojileri","music":"Müzik","other":"Diğer"} %}
-      <thead><tr><th>Ad</th><th>Ünvan</th><th>Branş</th><th>Telefon</th><th></th></tr></thead>
+      <thead><tr><th>No</th><th>Ad</th><th>Ünvan</th><th>Branş</th><th>Telefon</th><th></th></tr></thead>
       <tbody>
         {% for item in items %}
         <tr>
+          <td>{{ loop.index }}</td>
           <td>{{ item.full_name }}</td>
           <td>{{ 'Öğretmen' if item.title == 'teacher' else 'Akademisyen' }}</td>
           <td>{{ branch_labels.get(item.branch, item.branch) }}</td>

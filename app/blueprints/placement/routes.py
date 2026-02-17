@@ -1,7 +1,13 @@
 ﻿from datetime import datetime
+import io
 import json
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+import os
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from flask_login import current_user
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from ...extensions import db
 from ...models import (
     PlacementCandidate,
@@ -14,6 +20,21 @@ from ...services.placement import pick_questions, score_to_level, SKILL_LABELS, 
 
 
 placement_bp = Blueprint("placement", __name__)
+
+
+def _pdf_font_name():
+    candidates = [
+        ("Arial", r"C:\\Windows\\Fonts\\arial.ttf"),
+        ("DejaVuSans", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
+    ]
+    for name, path in candidates:
+        if os.path.exists(path):
+            try:
+                pdfmetrics.registerFont(TTFont(name, path))
+                return name
+            except Exception:
+                continue
+    return "Helvetica"
 
 
 @placement_bp.route("/placement", methods=["GET", "POST"])
@@ -137,6 +158,13 @@ def result(test_id):
     test = PlacementTest.query.get_or_404(test_id)
     candidate = PlacementCandidate.query.get_or_404(test.candidate_id)
     answers = PlacementAnswer.query.filter_by(test_id=test.id).all()
+    group_row = (
+        db.session.query(PlacementQuestion.group_name)
+        .join(PlacementTestQuestion, PlacementTestQuestion.question_id == PlacementQuestion.id)
+        .filter(PlacementTestQuestion.test_id == test.id)
+        .first()
+    )
+    group_name = group_row[0] if group_row else "-"
     total = test.total_questions or 0
     correct = test.correct_count or 0
     return render_template(
@@ -144,5 +172,63 @@ def result(test_id):
         test=test,
         candidate=candidate,
         total=total,
-        correct=correct
+        correct=correct,
+        group_name=group_name
     )
+
+
+@placement_bp.route("/placement/result/<int:test_id>/pdf")
+def result_pdf(test_id):
+    test = PlacementTest.query.get_or_404(test_id)
+    candidate = PlacementCandidate.query.get_or_404(test.candidate_id)
+    group_row = (
+        db.session.query(PlacementQuestion.group_name)
+        .join(PlacementTestQuestion, PlacementTestQuestion.question_id == PlacementQuestion.id)
+        .filter(PlacementTestQuestion.test_id == test.id)
+        .first()
+    )
+    group_name = group_row[0] if group_row else "-"
+    total = test.total_questions or 0
+    correct = test.correct_count or 0
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    font_name = _pdf_font_name()
+    c.setTitle("S?nav Sonucu")
+    c.setFont(font_name, 16)
+    c.drawString(40, height - 50, "Seviye Tespit S?nav? Sonucu")
+
+    c.setFont(font_name, 11)
+    y = height - 90
+    line_gap = 18
+
+    def draw_line(label, value):
+        nonlocal y
+        c.setFillColorRGB(0.32, 0.36, 0.40)
+        c.drawString(40, y, f"{label}:")
+        c.setFillColorRGB(0.10, 0.14, 0.19)
+        c.drawString(170, y, value)
+        y -= line_gap
+
+    started_at = test.started_at.strftime("%d.%m.%Y %H:%M:%S") if test.started_at else "-"
+    completed_at = test.completed_at.strftime("%d.%m.%Y %H:%M:%S") if test.completed_at else "-"
+    draw_line("Ad Soyad", candidate.full_name)
+    draw_line("IIN / T.C.", candidate.iin)
+    draw_line("Telefon", candidate.phone or "-")
+    draw_line("E-posta", candidate.email or "-")
+    y -= 6
+    draw_line("S?nav Grubu", group_name)
+    draw_line("Soru Say?s?", str(total))
+    draw_line("Do?ru Say?s?", f"{correct} / {total}")
+    draw_line("Skor", f"%{test.score_percent}")
+    draw_line("Seviye", test.level or "-")
+    draw_line("Ba?lad?", started_at)
+    draw_line("Bitti", completed_at)
+    draw_line("Model", test.model_used or "-")
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    filename = f"placement_result_{candidate.iin}_{test.id}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype="application/pdf")

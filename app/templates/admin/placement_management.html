@@ -11,7 +11,9 @@
 <div class="stat-grid md:grid-cols-3 mb-6">
   <div class="stat-card">
     <div class="stat-label">Aktif Grup</div>
-    <div class="stat-value">{{ active_group or 'Seçilmedi' }}</div>
+    <div class="stat-value">
+      {% if total_groups == 0 %}-{% else %}{{ active_group or '-' }}{% endif %}
+    </div>
   </div>
   <div class="stat-card">
     <div class="stat-label">Toplam Grup</div>
@@ -48,6 +50,10 @@
   <div>
     <h3 class="font-display text-lg">Soru Listesi</h3>
     <p class="section-subtitle">Seçili gruptan soruları filtreleyin ve yönetin.</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <button type="button" class="btn-secondary btn-sm" data-toggle-questions>Göster</button>
+    <span class="text-sm text-ink-500">Soru listesi gizli</span>
   </div>
 </div>
 
@@ -115,7 +121,7 @@
   </div>
 </form>
 
-<div class="space-y-4 mb-10">
+<div class="space-y-4 mb-10 hidden" data-question-list>
   {% for item in items %}
     <div class="card p-5">
       <div class="flex items-start justify-between gap-4">
@@ -124,7 +130,7 @@
             <input type="checkbox" class="checkbox" value="{{ item.id }}" data-question-checkbox>
             Bu soruyu seç
           </label>
-          <div class="text-xs uppercase tracking-wide text-ink-400">{{ item.group_name }} · {{ item.skill }} · {{ item.difficulty }}</div>
+          <div class="text-xs uppercase tracking-wide text-ink-400">Soru {{ loop.index }} · {{ item.group_name }} · {{ item.skill }} · {{ item.difficulty }}</div>
           <div class="text-base text-ink-900 mt-1">{{ item.prompt }}</div>
         </div>
         <div class="flex items-center gap-2">
@@ -159,28 +165,41 @@
 
 <div class="section-header mb-3">
   <div>
-    <h3 class="font-display text-lg">Prompt Ayarları</h3>
-    <p class="section-subtitle">Varsayılan prompt her zaman kullanılır; özel prompt ek bilgi olarak eklenir.</p>
+    <h3 class="font-display text-lg">Prompt</h3>
+    <p class="section-subtitle">Buraya yazılan prompt varsayılan olur.</p>
   </div>
 </div>
 
 <form method="post" class="card p-6 space-y-4 max-w-3xl">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div>
-    <label class="label">Prompt Profili</label>
-    <select name="placement_prompt_mode" class="select">
-      {% set current_mode = settings.get('placement_prompt_mode','standard') %}
-      <option value="standard" {% if current_mode == 'standard' %}selected{% endif %}>Standart</option>
-      <option value="strict_quality" {% if current_mode == 'strict_quality' %}selected{% endif %}>Kaliteyi Sıkılaştır</option>
-    </select>
-  </div>
-  <div>
-    <label class="label">Özel Prompt (Opsiyonel)</label>
-    <textarea name="placement_prompt_override" rows="8" class="textarea" placeholder="Varsayılan prompta eklenecek notlar...">{{ settings.get('placement_prompt_override','') }}</textarea>
-    <p class="text-sm text-ink-500 mt-2">Bu alan doluysa varsayılan prompta “Ek bilgi” olarak eklenir.</p>
+    <label class="label">Prompt</label>
+    <textarea name="placement_prompt_override" rows="10" class="textarea" placeholder="Yeni varsayılan prompt...">{{ settings.get('placement_prompt_override','') }}</textarea>
   </div>
   <button class="btn-primary">Kaydet</button>
 </form>
+
+<div class="section-header mt-6 mb-3">
+  <div>
+    <h3 class="font-display text-lg">Prompt Geçmişi</h3>
+    <p class="section-subtitle">Geçmiş promptları görüntüleyin ve seçip varsayılan yapın.</p>
+  </div>
+</div>
+
+<div class="space-y-3 max-w-3xl">
+  {% for item in prompt_history %}
+    <div class="card p-4">
+      <div class="text-xs uppercase tracking-wide text-ink-400">{{ item.created_at }}</div>
+      <div class="mt-2 text-sm text-ink-700 whitespace-pre-wrap">{{ item.prompt_text }}</div>
+      <form method="post" action="{{ url_for('admin.placement_prompt_use', history_id=item.id) }}" class="mt-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn-secondary btn-sm">Bunu Varsayılan Yap</button>
+      </form>
+    </div>
+  {% else %}
+    <div class="card p-4 text-ink-500">Henüz prompt geçmişi yok.</div>
+  {% endfor %}
+</div>
 
 <div class="section-header mt-8 mb-3">
   <div>
@@ -259,6 +278,21 @@
         input.value = cb.value;
         bulkForm.appendChild(input);
       });
+    });
+  }
+
+  const toggleBtn = document.querySelector("[data-toggle-questions]");
+  const questionList = document.querySelector("[data-question-list]");
+  if (toggleBtn && questionList) {
+    toggleBtn.addEventListener("click", () => {
+      const isHidden = questionList.classList.contains("hidden");
+      if (isHidden) {
+        questionList.classList.remove("hidden");
+        toggleBtn.textContent = "Gizle";
+      } else {
+        questionList.classList.add("hidden");
+        toggleBtn.textContent = "Göster";
+      }
     });
   }
 </script>

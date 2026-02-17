@@ -2,8 +2,8 @@
 {% block auth %}
 <div class="min-h-screen flex items-center justify-center auth-shell p-6">
   <div class="w-full max-w-md card p-8">
-    <h1 class="font-display text-3xl mb-2">Kurs Takip Yazılımı</h1>
-    <p class="text-ink-500 mb-6">Eğitim Ataşeliği</p>
+    <h1 class="font-display text-3xl mb-2 brand-text">Almatı Eğitim Ataşeliği</h1>
+    <p class="mb-6 brand-subtext">Kurs Takip Otomasyonu</p>
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="space-y-2 mb-4">
@@ -28,36 +28,41 @@
       <button class="btn-primary w-full">Giriş</button>
     </form>
     <div class="mt-8 space-y-2">
-      <a href="{{ url_for('public.pre_registration', lang='tr') }}" class="btn-ghost w-full justify-center">
+      <a href="{{ url_for('public.pre_registration', lang='tr') }}" class="btn-ghost w-full justify-center lang-link">
         <span class="btn-icon" aria-hidden="true">
           <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 0 1 2-2h6l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z"/><path d="M7 3v5h6V3H7z"/></svg>
         </span>
         Kursiyer Ön Kayıt (TR)
       </a>
-      <a href="{{ url_for('public.pre_registration', lang='kz') }}" class="btn-ghost w-full justify-center">
+      <a href="{{ url_for('public.pre_registration', lang='kz') }}" class="btn-ghost w-full justify-center lang-link">
         <span class="btn-icon" aria-hidden="true">
           <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 0 1 2-2h6l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z"/><path d="M7 3v5h6V3H7z"/></svg>
         </span>
         Алдын ала тіркелу (KZ)
       </a>
-      <a href="{{ url_for('public.pre_registration', lang='en') }}" class="btn-ghost w-full justify-center">
+      <a href="{{ url_for('public.pre_registration', lang='en') }}" class="btn-ghost w-full justify-center lang-link">
         <span class="btn-icon" aria-hidden="true">
           <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 0 1 2-2h6l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z"/><path d="M7 3v5h6V3H7z"/></svg>
         </span>
         Pre-registration (EN)
       </a>
-      <a href="{{ url_for('public.pre_registration', lang='ru') }}" class="btn-ghost w-full justify-center">
+      <a href="{{ url_for('public.pre_registration', lang='ru') }}" class="btn-ghost w-full justify-center lang-link">
         <span class="btn-icon" aria-hidden="true">
           <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 0 1 2-2h6l4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z"/><path d="M7 3v5h6V3H7z"/></svg>
         </span>
         Предрегистрация (RU)
       </a>
       <div class="pt-4">
-        <a href="{{ url_for('placement.landing') }}" class="btn-secondary w-full justify-center">
-          <span class="btn-icon" aria-hidden="true">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 3h12a1 1 0 0 1 1 1v12l-4-2-4 2-4-2-1 1V4a1 1 0 0 1 1-1z"/></svg>
+        <a href="{{ url_for('placement.landing') }}" class="btn-secondary w-full justify-start text-left lang-link no-border">
+          <span class="btn-icon self-start mt-0.5" aria-hidden="true">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 13.5V16h2.5l7.3-7.3-2.5-2.5L4 13.5zm9.7-8.7 1.5-1.5a1 1 0 0 1 1.4 0l1.1 1.1a1 1 0 0 1 0 1.4l-1.5 1.5-2.5-2.5z"/></svg>
           </span>
-          Ücretsiz Seviye Tespit Sınavı
+          <span class="flex flex-col items-start gap-0.5 leading-snug text-sm">
+            <span class="font-semibold">Seviye Tespit Sınavı</span>
+            <span class="font-semibold text-ink-500">Деңгей анықтау емтиханы (KZ)</span>
+            <span class="font-semibold text-ink-500">Placement Test (EN)</span>
+            <span class="font-semibold text-ink-500">Тест на определение уровня (RU)</span>
+          </span>
         </a>
       </div>
     </div>

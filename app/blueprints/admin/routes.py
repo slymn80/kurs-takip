@@ -10,6 +10,7 @@ from ...extensions import db, bcrypt
 from ...models import (
     User,
     SystemSetting,
+    PlacementPromptHistory,
     AuditLog,
     Course,
     Teacher,
@@ -22,7 +23,9 @@ from ...models import (
     PlacementQuestion,
     PreRegistration,
     PlacementTestQuestion,
-    PlacementAnswer
+    PlacementAnswer,
+    PlacementTest,
+    PlacementCandidate
 )
 from ...forms import UserForm
 from ...security import require_roles, hash_api_token
@@ -149,51 +152,56 @@ def edit_user(user_id):
 @login_required
 @require_roles("admin")
 def delete_user(user_id):
-    user = User.query.get_or_404(user_id)
-    if user.id == current_user.id:
-        flash("Kendi hesabınızı silemezsiniz.", "error")
-        return redirect(url_for("admin.users"))
-    blockers = []
-    if Course.query.filter_by(created_by_user_id=user.id).first():
-        blockers.append("oluşturduğu kurslar")
-    if Course.query.filter_by(teacher_user_id=user.id).first():
-        blockers.append("atanmış kurslar")
-    if Teacher.query.filter_by(user_id=user.id).first():
-        blockers.append("öğretmen kaydı")
-    if Attendance.query.filter_by(marked_by_user_id=user.id).first():
-        blockers.append("yoklama kayıtları")
-    if Message.query.filter_by(user_id=user.id).first():
-        blockers.append("mesajlar")
-    if Announcement.query.filter_by(user_id=user.id).first():
-        blockers.append("duyurular")
-    if Certificate.query.filter_by(issued_by_user_id=user.id).first():
-        blockers.append("sertifikalar")
-    if CourseLedgerEntry.query.filter_by(teacher_user_id=user.id).first():
-        blockers.append("kurs defteri kayıtları")
-    if ApiToken.query.filter_by(user_id=user.id).first():
-        blockers.append("API tokenlar")
-    if blockers:
-        flash(
-            "Bu kullanıcı silinemiyor. İlişkili kayıtlar var: " + ", ".join(blockers) +
-            ". Kullanıcıyı pasif yapın.",
-            "error"
-        )
-        return redirect(url_for("admin.users"))
-    logs = AuditLog.query.filter_by(actor_user_id=user.id).all()
-    if logs:
-        for log in logs:
-            log.actor_name_cached = user.full_name
-            log.actor_username_cached = user.username
-            log.actor_user_id = None
-            db.session.add(log)
-    db.session.delete(user)
     try:
+        user = User.query.get_or_404(user_id)
+        if user.id == current_user.id:
+            flash("Kendi hesabınızı silemezsiniz.", "error")
+            return redirect(url_for("admin.users"))
+        blockers = []
+        if Course.query.filter_by(created_by_user_id=user.id).first():
+            blockers.append("oluşturduğu kurslar")
+        if Course.query.filter_by(teacher_user_id=user.id).first():
+            blockers.append("atanmış kurslar")
+        if Teacher.query.filter_by(user_id=user.id).first():
+            blockers.append("öğretmen kaydı")
+        if Attendance.query.filter_by(marked_by_user_id=user.id).first():
+            blockers.append("yoklama kayıtları")
+        if Message.query.filter_by(user_id=user.id).first():
+            blockers.append("mesajlar")
+        if Announcement.query.filter_by(user_id=user.id).first():
+            blockers.append("duyurular")
+        if Certificate.query.filter_by(issued_by_user_id=user.id).first():
+            blockers.append("sertifikalar")
+        if CourseLedgerEntry.query.filter_by(teacher_user_id=user.id).first():
+            blockers.append("kurs defteri kayıtları")
+        if ApiToken.query.filter_by(user_id=user.id).first():
+            blockers.append("API tokenlar")
+        if blockers:
+            flash(
+                "Bu kullanıcı silinemiyor. İlişkili kayıtlar var: " + ", ".join(blockers) +
+                ". Kullanıcıyı pasif yapın.",
+                "error"
+            )
+            return redirect(url_for("admin.users"))
+        logs = AuditLog.query.filter_by(actor_user_id=user.id).all()
+        if logs:
+            for log in logs:
+                log.actor_name_cached = user.full_name
+                log.actor_username_cached = user.username
+                log.actor_user_id = None
+                db.session.add(log)
+        db.session.delete(user)
         db.session.commit()
         flash("Kullanıcı silindi.", "success")
+        return redirect(url_for("admin.users"))
     except IntegrityError:
         db.session.rollback()
         flash("Kullanıcı silinemedi. İlişkili kayıtlar var. Lütfen kullanıcıyı pasif yapın.", "error")
-    return redirect(url_for("admin.users"))
+        return redirect(url_for("admin.users"))
+    except Exception:
+        db.session.rollback()
+        flash("Kullanıcı silme sırasında beklenmeyen bir hata oluştu.", "error")
+        return redirect(url_for("admin.users"))
 
 
 @admin_bp.route("/settings", methods=["GET", "POST"])
@@ -380,12 +388,17 @@ def placement_management():
 
     if request.method == "POST":
         updates = {}
-        if "placement_prompt_mode" in request.form:
-            updates["placement_prompt_mode"] = (request.form.get("placement_prompt_mode") or "standard").strip()
         if "placement_prompt_override" in request.form:
             updates["placement_prompt_override"] = (request.form.get("placement_prompt_override") or "").strip()
         if "placement_active_group" in request.form:
             updates["placement_active_group"] = (request.form.get("placement_active_group") or "").strip()
+        if "placement_prompt_override" in updates:
+            prompt_text = updates["placement_prompt_override"]
+            if prompt_text:
+                db.session.add(PlacementPromptHistory(
+                    prompt_text=prompt_text,
+                    created_by_user_id=current_user.id
+                ))
         for key, value in updates.items():
             setting = SystemSetting.query.filter_by(key=key).first()
             if not setting:
@@ -399,6 +412,7 @@ def placement_management():
         return redirect(url_for("admin.placement_management"))
 
     settings = {s.key: s.value for s in SystemSetting.query.all()}
+    prompt_history = PlacementPromptHistory.query.order_by(PlacementPromptHistory.created_at.desc()).limit(50).all()
     active_group = settings.get("placement_active_group", "")
     selected_group = group_filter or active_group
     query = PlacementQuestion.query.filter(PlacementQuestion.is_active.is_(True))
@@ -450,6 +464,7 @@ def placement_management():
     return render_template(
         "admin/placement_management.html",
         settings=settings,
+        prompt_history=prompt_history,
         items=view_items,
         groups=groups,
         selected_group=selected_group,
@@ -460,6 +475,27 @@ def placement_management():
         total_questions=total_questions,
         total_groups=total_groups
     )
+
+
+@admin_bp.route("/placement-prompt/<int:history_id>/use", methods=["POST"])
+@login_required
+@require_roles("admin")
+def placement_prompt_use(history_id):
+    item = PlacementPromptHistory.query.get_or_404(history_id)
+    setting = SystemSetting.query.filter_by(key="placement_prompt_override").first()
+    if not setting:
+        setting = SystemSetting(key="placement_prompt_override", value=item.prompt_text)
+        db.session.add(setting)
+    else:
+        setting.value = item.prompt_text
+    db.session.add(PlacementPromptHistory(
+        prompt_text=item.prompt_text,
+        created_by_user_id=current_user.id
+    ))
+    db.session.add(AuditLog(actor_user_id=current_user.id, action="update", entity_type="placement_prompt", entity_id=item.id))
+    db.session.commit()
+    flash("Prompt güncellendi.", "success")
+    return redirect(url_for("admin.placement_management"))
 
 
 @admin_bp.route("/placement-management/refresh", methods=["POST"])
@@ -621,6 +657,165 @@ def update_pre_registration_status(prereg_id):
     db.session.commit()
     flash("Ön kayıt durumu güncellendi.", "success")
     return redirect(url_for("admin.pre_registrations", status=request.args.get("status")))
+
+
+@admin_bp.route("/placement-results")
+@login_required
+@require_roles("admin")
+def placement_results():
+    search = (request.args.get("q") or "").strip()
+    group_filter = (request.args.get("group") or "").strip()
+    level_filter = (request.args.get("level") or "").strip()
+    min_score = request.args.get("min_score")
+    max_score = request.args.get("max_score")
+    date_from = (request.args.get("from") or "").strip()
+    date_to = (request.args.get("to") or "").strip()
+
+    group_subq = (
+        db.session.query(
+            PlacementTestQuestion.test_id.label("test_id"),
+            func.max(PlacementQuestion.group_name).label("group_name")
+        )
+        .join(PlacementQuestion, PlacementQuestion.id == PlacementTestQuestion.question_id)
+        .group_by(PlacementTestQuestion.test_id)
+        .subquery()
+    )
+    rows = (
+        db.session.query(PlacementTest, PlacementCandidate, group_subq.c.group_name)
+        .join(PlacementCandidate, PlacementCandidate.id == PlacementTest.candidate_id)
+        .outerjoin(group_subq, group_subq.c.test_id == PlacementTest.id)
+    )
+    if search:
+        rows = rows.filter(
+            (PlacementCandidate.full_name.ilike(f"%{search}%")) |
+            (PlacementCandidate.iin.ilike(f"%{search}%"))
+        )
+    if group_filter:
+        rows = rows.filter(group_subq.c.group_name == group_filter)
+    if level_filter:
+        rows = rows.filter(PlacementTest.level == level_filter)
+    if min_score:
+        try:
+            rows = rows.filter(PlacementTest.score_percent >= float(min_score))
+        except ValueError:
+            pass
+    if max_score:
+        try:
+            rows = rows.filter(PlacementTest.score_percent <= float(max_score))
+        except ValueError:
+            pass
+    if date_from:
+        try:
+            rows = rows.filter(PlacementTest.started_at >= date_from)
+        except Exception:
+            pass
+    if date_to:
+        try:
+            rows = rows.filter(PlacementTest.started_at <= date_to)
+        except Exception:
+            pass
+    rows = rows.order_by(PlacementTest.started_at.desc()).limit(200).all()
+
+    groups = [
+        name for (name,) in db.session.query(PlacementQuestion.group_name)
+        .distinct()
+        .order_by(PlacementQuestion.group_name.asc())
+        .all() if name
+    ]
+    total_tests = PlacementTest.query.count()
+    avg_score = db.session.query(func.avg(PlacementTest.score_percent)).scalar() or 0
+    items = []
+    for test, candidate, group_name in rows:
+        items.append({
+            "id": test.id,
+            "candidate": candidate.full_name,
+            "iin": candidate.iin,
+            "started_at": test.started_at,
+            "completed_at": test.completed_at,
+            "score_percent": test.score_percent,
+            "level": test.level,
+            "total_questions": test.total_questions,
+            "group_name": group_name or "-",
+            "mode": test.mode,
+            "model_used": test.model_used
+        })
+    return render_template(
+        "admin/placement_results.html",
+        items=items,
+        groups=groups,
+        total_tests=total_tests,
+        avg_score=round(avg_score, 2),
+        search=search,
+        group_filter=group_filter,
+        level_filter=level_filter,
+        min_score=min_score or "",
+        max_score=max_score or "",
+        date_from=date_from,
+        date_to=date_to
+    )
+
+
+@admin_bp.route("/placement-results/<int:test_id>/delete", methods=["POST"])
+@login_required
+@require_roles("admin")
+def delete_placement_result(test_id):
+    test = PlacementTest.query.get_or_404(test_id)
+    candidate_id = test.candidate_id
+    PlacementAnswer.query.filter_by(test_id=test.id).delete(synchronize_session=False)
+    PlacementTestQuestion.query.filter_by(test_id=test.id).delete(synchronize_session=False)
+    db.session.delete(test)
+    db.session.commit()
+    # delete candidate if no remaining tests
+    remaining = PlacementTest.query.filter_by(candidate_id=candidate_id).count()
+    if remaining == 0:
+        candidate = PlacementCandidate.query.get(candidate_id)
+        if candidate:
+            db.session.delete(candidate)
+            db.session.commit()
+    flash("Sınav sonucu silindi.", "success")
+    return redirect(url_for("admin.placement_results"))
+
+
+@admin_bp.route("/placement-results/delete-many", methods=["POST"])
+@login_required
+@require_roles("admin")
+def delete_many_placement_results():
+    ids = request.form.getlist("test_ids")
+    password = request.form.get("password", "")
+    confirm = request.form.get("confirm", "")
+    if not bcrypt.check_password_hash(current_user.password_hash, password):
+        flash("Şifre hatalı.", "error")
+        return redirect(url_for("admin.placement_results"))
+    if confirm != "yes":
+        flash("Toplu silme için onay kutusunu işaretleyin.", "error")
+        return redirect(url_for("admin.placement_results"))
+    if not ids:
+        flash("Silinecek sonuç seçilmedi.", "error")
+        return redirect(url_for("admin.placement_results"))
+    test_ids = [int(x) for x in ids if x.isdigit()]
+    if not test_ids:
+        flash("Geçersiz seçim.", "error")
+        return redirect(url_for("admin.placement_results"))
+
+    candidate_ids = [row[0] for row in db.session.query(PlacementTest.candidate_id).filter(PlacementTest.id.in_(test_ids)).all()]
+    PlacementAnswer.query.filter(PlacementAnswer.test_id.in_(test_ids)).delete(synchronize_session=False)
+    PlacementTestQuestion.query.filter(PlacementTestQuestion.test_id.in_(test_ids)).delete(synchronize_session=False)
+    PlacementTest.query.filter(PlacementTest.id.in_(test_ids)).delete(synchronize_session=False)
+    db.session.commit()
+
+    # cleanup candidates without tests
+    if candidate_ids:
+        remaining_candidates = set(
+            row[0] for row in db.session.query(PlacementTest.candidate_id)
+            .filter(PlacementTest.candidate_id.in_(candidate_ids)).distinct().all()
+        )
+        to_delete = [cid for cid in candidate_ids if cid not in remaining_candidates]
+        if to_delete:
+            PlacementCandidate.query.filter(PlacementCandidate.id.in_(to_delete)).delete(synchronize_session=False)
+            db.session.commit()
+
+    flash(f"{len(test_ids)} sınav sonucu silindi.", "success")
+    return redirect(url_for("admin.placement_results"))
 
 
 @admin_bp.route("/placement-questions/<int:question_id>/approve", methods=["POST"])

@@ -23,10 +23,11 @@
     </form>
     {% endif %}
     <table class="table">
-      <thead><tr><th>Ad</th><th>Telefon</th><th>Durum</th><th></th></tr></thead>
+      <thead><tr><th>No</th><th>Ad</th><th>Telefon</th><th>Durum</th><th></th></tr></thead>
       <tbody>
         {% for enrollment in enrollments %}
         <tr>
+          <td>{{ loop.index }}</td>
           <td>{{ enrollment.student.full_name }}</td>
           <td>{{ enrollment.student.phone }}</td>
           <td>{{ enrollment.status }}</td>
@@ -40,7 +41,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="text-ink-400">Kursiyer yok.</td></tr>
+        <tr><td colspan="5" class="text-ink-400">Kursiyer yok.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -63,10 +64,11 @@
   </div>
   <div class="card p-6">
     <table class="table">
-      <thead><tr><th>Tarih</th><th>Saat</th><th>Ders İşlendi</th><th>Toplam/Katılan</th><th>PDF</th><th></th></tr></thead>
+      <thead><tr><th>No</th><th>Tarih</th><th>Saat</th><th>Ders İşlendi</th><th>Toplam/Katılan</th><th>PDF</th><th></th></tr></thead>
       <tbody>
         {% for session in sessions %}
         <tr>
+          <td>{{ loop.index }}</td>
           <td>{{ session.session_date }}</td>
           <td>{{ session.start_time }} - {{ session.end_time }}</td>
           <td>
@@ -86,15 +88,90 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="btn-danger btn-sm">Sil</button>
               </form>
-              <a class="btn-accent btn-sm" href="{{ url_for('courses.take_attendance', session_id=session.id) }}">Yoklama Al</a>
+              <a class="btn-accent btn-sm js-attendance-link"
+                 href="{{ url_for('courses.take_attendance', session_id=session.id) }}"
+                 data-session-date="{{ session.session_date }}"
+                 data-session-start="{{ session.start_time }}">
+                Yoklama Al
+              </a>
             </div>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="text-ink-400">Oturum yok.</td></tr>
+        <tr><td colspan="7" class="text-ink-400">Oturum yok.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </section>
+
+{% if last_session and current_user.role in ['teacher','coordinator','principal','attache','admin'] %}
+<section class="mt-10">
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h3 class="font-display text-xl">Değerlendirme</h3>
+      <p class="text-ink-500 text-sm">Son oturum: {{ last_session.session_date }} {{ last_session.start_time }} - {{ last_session.end_time }}</p>
+    </div>
+  </div>
+  <div class="card p-6">
+    <form method="post" action="{{ url_for('courses.save_exam_results', course_id=course.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <table class="table">
+        <thead><tr><th>No</th><th>Kursiyer</th><th>IIN/TC</th><th>Sınav Puanı</th><th>Başarı</th><th>Değerlendirildi</th></tr></thead>
+        <tbody>
+          {% for enrollment in enrollments %}
+            {% set result = exam_results.get(enrollment.id) %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ enrollment.student.full_name }}</td>
+              <td>{{ enrollment.student.iin }}</td>
+              <td>
+                <input type="number" min="0" max="100" step="0.01" name="score_{{ enrollment.id }}" class="input js-score" data-enrollment-id="{{ enrollment.id }}" value="{{ result.score if result else '' }}">
+              </td>
+              <td>
+                <select name="status_{{ enrollment.id }}" class="select js-status" data-enrollment-id="{{ enrollment.id }}">
+                  <option value="" {% if not result %}selected{% endif %}>Seçilmedi</option>
+                  <option value="passed" {% if result and result.passed %}selected{% endif %}>Başarılı</option>
+                  <option value="failed" {% if result and result.passed is not none and not result.passed %}selected{% endif %}>Başarısız</option>
+                </select>
+              </td>
+              <td class="text-sm text-ink-500">
+                {% if result and result.evaluated_at %}
+                  {{ result.evaluated_at.strftime('%d.%m.%Y %H:%M') }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="text-ink-400">Kursiyer yok.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="mt-4 flex items-center justify-end">
+        <button class="btn-primary">Değerlendirmeyi Kaydet</button>
+      </div>
+    </form>
+  </div>
+</section>
+<script>
+  const syncExamStatus = () => {
+    document.querySelectorAll('.js-score').forEach((input) => {
+      const id = input.dataset.enrollmentId;
+      const select = document.querySelector(`.js-status[data-enrollment-id="${id}"]`);
+      if (!select) return;
+      const passedOption = select.querySelector('option[value="passed"]');
+      const hasScore = input.value !== '';
+      if (passedOption) passedOption.disabled = !hasScore;
+      if (!hasScore && select.value === 'passed') {
+        select.value = '';
+      }
+    });
+  };
+  document.querySelectorAll('.js-score').forEach((input) => {
+    input.addEventListener('input', syncExamStatus);
+  });
+  syncExamStatus();
+</script>
+{% endif %}
 {% endblock %}

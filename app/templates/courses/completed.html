@@ -10,10 +10,11 @@
 
 <div class="card p-6">
   <table class="table">
-    <thead><tr><th>Başlık</th><th>Öğretmen</th><th>Tarih</th><th>Durum</th><th></th></tr></thead>
+    <thead><tr><th>No</th><th>Başlık</th><th>Öğretmen</th><th>Tarih</th><th>Durum</th><th></th></tr></thead>
     <tbody>
       {% for item in items %}
       <tr>
+        <td>{{ loop.index }}</td>
         <td>{{ item.title }}</td>
         <td>{{ item.teacher.full_name if item.teacher else (item.teacher_name_cached or '-') }}</td>
         <td>{{ item.start_date }} - {{ item.end_date }}</td>
@@ -38,7 +39,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="5" class="text-ink-400">Biten kurs yok.</td></tr>
+      <tr><td colspan="6" class="text-ink-400">Biten kurs yok.</td></tr>
       {% endfor %}
     </tbody>
   </table>

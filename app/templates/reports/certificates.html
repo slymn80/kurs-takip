@@ -29,14 +29,17 @@
 
 <div class="card p-6">
   <table class="table">
-    <thead><tr><th>Kursiyer</th><th>Kurs</th><th>IIN</th><th>Durum</th><th></th></tr></thead>
+    <thead><tr><th>No</th><th>Kursiyer</th><th>Kurs</th><th>IIN</th><th>Sınav</th><th>Durum</th><th></th></tr></thead>
     <tbody>
       {% for e in enrollments %}
         {% set cert = cert_map.get(e.id) %}
+        {% set result = result_map.get(e.id) %}
         <tr>
+          <td>{{ loop.index }}</td>
           <td>{{ e.student.full_name }}</td>
           <td>{{ e.course.title }}</td>
           <td>{{ e.student.iin }}</td>
+          <td>{{ result.score if result else '-' }}</td>
           <td>{% if cert %}Üretildi{% else %}Bekliyor{% endif %}</td>
           <td class="text-right">
             {% if cert %}
@@ -50,9 +53,38 @@
           </td>
         </tr>
       {% else %}
-        <tr><td colspan="5" class="text-ink-400">Uygun kursiyer bulunamadı.</td></tr>
+        <tr><td colspan="7" class="text-ink-400">Uygun kursiyer bulunamadı.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+
+<div class="card p-6 mt-6">
+  <div class="section-header mb-4">
+    <div>
+      <h3 class="font-display text-xl">Sertifika Basım Modülü</h3>
+      <p class="section-subtitle">Sertifikaya hak kazanan kursiyerlerin PDF'lerini indirip yazdırabilirsiniz.</p>
+    </div>
+  </div>
+  <div class="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
+    <div>
+      <div class="text-sm text-ink-500 mb-3">Örnek sertifika şablonu</div>
+      <div class="soft-card p-4">
+        <img src="{{ url_for('static', filename='certificates/sample-template.svg') }}" alt="Örnek sertifika şablonu" style="width:100%;height:auto;display:block;border-radius:12px;">
+      </div>
+    </div>
+    <div class="form-card">
+      <h4 class="font-display text-lg mb-3">Basım Adımları</h4>
+      <ul class="text-sm text-ink-600 space-y-2">
+        <li>1. Sertifika listesinde "PDF" butonu ile dosyayı indirin.</li>
+        <li>2. PDF dosyasını açıp yazdırın.</li>
+        <li>3. Toplu basım için filtre kullanarak kurs seçin.</li>
+      </ul>
+      <div class="mt-4">
+        <a href="{{ url_for('reports.certificates') }}" class="btn-secondary w-full justify-center">Sertifika Listesine Dön</a>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}

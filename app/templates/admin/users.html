@@ -37,10 +37,11 @@
   <div class="card p-6 lg:col-span-2">
     <h2 class="font-display text-xl mb-4">Kullanıcılar</h2>
     <table class="table">
-      <thead><tr><th>Kullanıcı</th><th>Rol</th><th>Durum</th><th></th></tr></thead>
+      <thead><tr><th>No</th><th>Kullanıcı</th><th>Rol</th><th>Durum</th><th></th></tr></thead>
       <tbody>
         {% for item in items %}
         <tr>
+          <td>{{ loop.index }}</td>
           <td>{{ item.full_name }}<div class="text-xs text-ink-400">{{ item.username }}</div></td>
           <td>{{ item.role }}</td>
           <td>{{ 'Aktif' if item.is_active else 'Pasif' }}</td>

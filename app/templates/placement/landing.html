@@ -2,8 +2,13 @@
 {% block auth %}
 <div class="min-h-screen flex items-center justify-center auth-shell p-6">
   <div class="w-full max-w-2xl card p-8">
-    <h1 class="font-display text-3xl mb-2">Ücretsiz Seviye Tespit Sınavı</h1>
-    <p class="text-ink-500 mb-6">Türkçe seviyenizi 30 soruluk bir sınavla ölçün.</p>
+    <h1 class="font-display text-3xl mb-2">Seviye Tespit Sınavı</h1>
+    <p class="text-ink-500 mb-2">Türkçe seviyenizi 30 soruluk bir sınavla ölçün.</p>
+    <div class="text-sm text-ink-500 mb-6 space-y-1">
+      <div>Деңгей анықтау емтиханы (KZ) — 30 сұрақ.</div>
+      <div>Placement Test (EN) — 30 questions.</div>
+      <div>Тест на определение уровня (RU) — 30 вопросов.</div>
+    </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -21,22 +26,27 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div>
         <label class="label">IIN / T.C.</label>
+        <div class="text-xs text-ink-500 mb-1">ЖСН (KZ) · National ID (EN) · ИИН (RU)</div>
         <input type="text" name="iin" class="input" required value="{{ iin }}">
       </div>
       <div>
         <label class="label">Ad Soyad</label>
+        <div class="text-xs text-ink-500 mb-1">Аты-жөні (KZ) · Full Name (EN) · ФИО (RU)</div>
         <input type="text" name="full_name" class="input" required value="{{ candidate.full_name if candidate else '' }}">
       </div>
       <div>
         <label class="label">Telefon</label>
+        <div class="text-xs text-ink-500 mb-1">Телефон (KZ) · Phone (EN) · Телефон (RU)</div>
         <input type="text" name="phone" class="input" value="{{ candidate.phone if candidate else '' }}">
       </div>
       <div>
         <label class="label">E-posta</label>
+        <div class="text-xs text-ink-500 mb-1">Эл. пошта (KZ) · Email (EN) · Эл. почта (RU)</div>
         <input type="email" name="email" class="input" value="{{ candidate.email if candidate else '' }}">
       </div>
       <div class="md:col-span-2">
         <button class="btn-primary w-full">Sınava Başla</button>
+        <div class="text-xs text-ink-500 mt-2">Емтиханды бастау (KZ) · Start Test (EN) · Начать тест (RU)</div>
       </div>
     </form>
 

@@ -392,20 +392,37 @@ def edit_teacher(teacher_id):
 @require_roles("coordinator", "principal", "attache", "admin")
 def students():
     form = StudentForm()
+    prereg_id = request.args.get("prereg_id")
+    prereg = None
+    if prereg_id and prereg_id.isdigit():
+        prereg = PreRegistration.query.get(int(prereg_id))
     if current_user.role == "teacher":
-        courses_query = Course.query.filter(Course.teacher_user_id == current_user.id)
+        courses_query = Course.query.filter(
+            Course.teacher_user_id == current_user.id,
+            Course.status == "active"
+        )
     else:
-        courses_query = Course.query
+        courses_query = Course.query.filter(Course.status == "active")
     form.course_id.choices = [(0, "Se\u00e7ilmedi")] + [
         (c.id, c.title) for c in courses_query.order_by(Course.created_at.desc()).all()
     ]
     max_file_kb = current_app.config["STUDENT_UPLOAD_MAX_BYTES"] // 1024
+    if prereg and prereg.status == "approved" and request.method == "GET":
+        form.full_name.data = prereg.full_name
+        form.iin.data = prereg.iin
+        form.education_level.data = prereg.education_level
+        form.phone.data = prereg.phone
+        form.email.data = prereg.email
+        form.notes.data = prereg.notes
     if form.validate_on_submit():
+        prereg_id_form = request.form.get("prereg_id")
+        prereg = PreRegistration.query.get(int(prereg_id_form)) if prereg_id_form and prereg_id_form.isdigit() else None
         existing_student = Student.query.filter_by(iin=form.iin.data).first()
         if existing_student:
             flash("Bu IIN/TC ile kayıtlı bir kursiyer zaten var.", "error")
             items = Student.query.filter(Student.is_active == True).order_by(Student.created_at.desc()).all()
-            return render_template("definitions/students.html", form=form, items=items, max_file_kb=max_file_kb)
+            approved_preregs = PreRegistration.query.filter_by(status="approved").order_by(PreRegistration.created_at.desc()).all()
+            return render_template("definitions/students.html", form=form, items=items, max_file_kb=max_file_kb, approved_preregs=approved_preregs, selected_prereg=prereg)
         upload_folder = current_app.config["STUDENT_UPLOAD_FOLDER"]
         max_bytes = current_app.config["STUDENT_UPLOAD_MAX_BYTES"]
         photo_path, photo_error = _save_student_upload(
@@ -440,12 +457,22 @@ def students():
         db.session.flush()
         if form.course_id.data:
             db.session.add(Enrollment(course_id=form.course_id.data, student_id=student.id))
+        if prereg:
+            db.session.delete(prereg)
         db.session.add(AuditLog(actor_user_id=current_user.id, action="create", entity_type="student", after_json=serialize_json({"name": student.full_name})))
         db.session.commit()
         flash("Kursiyer eklendi.", "success")
         return redirect(url_for("definitions.students"))
     items = Student.query.filter(Student.is_active == True).order_by(Student.created_at.desc()).all()
-    return render_template("definitions/students.html", form=form, items=items, max_file_kb=max_file_kb)
+    approved_preregs = PreRegistration.query.filter_by(status="approved").order_by(PreRegistration.created_at.desc()).all()
+    return render_template(
+        "definitions/students.html",
+        form=form,
+        items=items,
+        max_file_kb=max_file_kb,
+        approved_preregs=approved_preregs,
+        selected_prereg=prereg
+    )
 
 
 @definitions_bp.route("/students/<int:student_id>/delete", methods=["POST"])
@@ -486,9 +513,12 @@ def edit_student(student_id):
     student = Student.query.get_or_404(student_id)
     form = StudentForm(obj=student)
     if current_user.role == "teacher":
-        courses_query = Course.query.filter(Course.teacher_user_id == current_user.id)
+        courses_query = Course.query.filter(
+            Course.teacher_user_id == current_user.id,
+            Course.status == "active"
+        )
     else:
-        courses_query = Course.query
+        courses_query = Course.query.filter(Course.status == "active")
     form.course_id.choices = [(0, "Se\u00e7ilmedi")] + [
         (c.id, c.title) for c in courses_query.order_by(Course.created_at.desc()).all()
     ]
