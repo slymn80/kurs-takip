@@ -338,6 +338,7 @@ def generate_questions(count=30):
         return resp.json()
 
     last_error = None
+    last_detail = None
     for _ in range(3):
         payload = {
             "model": model,
@@ -347,28 +348,40 @@ def generate_questions(count=30):
         }
         try:
             data = _request(payload)
-        except requests.exceptions.ReadTimeout:
+        except requests.exceptions.ReadTimeout as exc:
             last_error = "read_timeout"
-            time.sleep(1.5)
-            continue
-        except requests.exceptions.RequestException as exc:
-            last_error = f"request_error:{type(exc).__name__}"
+            last_detail = str(exc)
             time.sleep(1.5)
             continue
         except requests.HTTPError as exc:
             status = exc.response.status_code if exc.response is not None else None
+            body = ""
+            if exc.response is not None:
+                try:
+                    body = exc.response.text or ""
+                except Exception:
+                    body = ""
+            last_error = f"http_error:{status}"
+            last_detail = body[:800] if body else str(exc)
             if status == 400:
                 payload.pop("response_format", None)
                 data = _request(payload)
             else:
                 raise
+        except requests.exceptions.RequestException as exc:
+            last_error = f"request_error:{type(exc).__name__}"
+            last_detail = str(exc)
+            time.sleep(1.5)
+            continue
         message = data["choices"][0]["message"]
         if message.get("refusal"):
             last_error = "refusal"
+            last_detail = "model_refusal"
             continue
         content = message.get("content") or ""
         if not content:
             last_error = "empty_content"
+            last_detail = "no_content"
             continue
         try:
             raw = json.loads(content)
@@ -376,11 +389,13 @@ def generate_questions(count=30):
             extracted = _extract_json_array(content)
             if not extracted:
                 last_error = "invalid_json"
+                last_detail = content[:800]
                 continue
             raw = json.loads(extracted)
         items = _normalize_questions(raw)
         if not items:
             last_error = "invalid_format"
+            last_detail = str(type(raw))
             continue
         cleaned = _clean_questions(items, strict=True)
         if not cleaned:
@@ -389,8 +404,11 @@ def generate_questions(count=30):
             cleaned = _rebalance_correct_indices(cleaned)
             return cleaned, model
         last_error = "invalid_items"
+        last_detail = f"items={len(items) if items else 0}"
 
-    raise ValueError(f"LLM returned invalid question list ({last_error}).")
+    detail_msg = f" | detail: {last_detail}" if last_detail else ""
+    _log_llm('warning', f"LLM invalid question list: {last_error}{detail_msg}")
+    raise ValueError(f"LLM returned invalid question list ({last_error}).{detail_msg}")
 
 
 def _next_group_name():
