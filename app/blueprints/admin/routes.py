@@ -506,7 +506,7 @@ def placement_refresh_pool_admin():
         count = int(request.form.get("count") or 30)
     except ValueError:
         count = 30
-    count = max(10, min(count, 100))
+    count = max(1, min(count, 100))
     try:
         group_name = create_question_group(count=count)
         if request.form.get("set_active"):
