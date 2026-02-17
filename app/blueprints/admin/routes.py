@@ -1,9 +1,10 @@
 ﻿import json
+import threading
 from datetime import datetime
 from sqlalchemy import func
 import secrets
 import string
-from flask import Blueprint, render_template, redirect, url_for, request, flash, session
+from flask import Blueprint, render_template, redirect, url_for, request, flash, session, current_app
 from sqlalchemy.exc import IntegrityError
 from flask_login import login_required, current_user
 from ...extensions import db, bcrypt
@@ -39,6 +40,43 @@ admin_bp = Blueprint("admin", __name__)
 def _generate_password(length=12):
     alphabet = string.ascii_letters + string.digits + "!@#$%?"
     return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def _set_generation_status(state, message, group_name=None):
+    payload = {
+        "state": state,
+        "message": message,
+        "group_name": group_name,
+        "updated_at": datetime.utcnow().isoformat()
+    }
+    setting = SystemSetting.query.filter_by(key="placement_generation_status").first()
+    if not setting:
+        setting = SystemSetting(key="placement_generation_status", value=json.dumps(payload, ensure_ascii=False))
+        db.session.add(setting)
+    else:
+        setting.value = json.dumps(payload, ensure_ascii=False)
+    db.session.commit()
+
+
+def _run_generation(app, count, set_active):
+    with app.app_context():
+        try:
+            _set_generation_status("running", "Soru ?retimi ba?lad?.", None)
+            group_name = create_question_group(count=count)
+            if set_active:
+                setting = SystemSetting.query.filter_by(key="placement_active_group").first()
+                if not setting:
+                    setting = SystemSetting(key="placement_active_group", value=group_name)
+                    db.session.add(setting)
+                else:
+                    setting.value = group_name
+                db.session.commit()
+            _set_generation_status("success", f"Soru ?retimi tamamland?: {group_name} ({count} soru).", group_name)
+        except Exception as exc:
+            db.session.rollback()
+            _set_generation_status("failed", f"Soru üretimi başarısız: {exc}", None)
+        finally:
+            db.session.remove()
 
 
 @admin_bp.route("/users", methods=["GET", "POST"])
@@ -473,7 +511,8 @@ def placement_management():
         search=search,
         active_group=active_group,
         total_questions=total_questions,
-        total_groups=total_groups
+        total_groups=total_groups,
+        generation_status=generation_status
     )
 
 
@@ -507,20 +546,17 @@ def placement_refresh_pool_admin():
     except ValueError:
         count = 30
     count = max(1, min(count, 100))
+    set_active = bool(request.form.get("set_active"))
     try:
-        group_name = create_question_group(count=count)
-        if request.form.get("set_active"):
-            setting = SystemSetting.query.filter_by(key="placement_active_group").first()
-            if not setting:
-                setting = SystemSetting(key="placement_active_group", value=group_name)
-                db.session.add(setting)
-            else:
-                setting.value = group_name
-            db.session.commit()
-        flash(f"Yeni sınav üretildi: {group_name} ({count} soru).", "success")
+        _set_generation_status("queued", "Soru üretimi sıraya alındı.", None)
+        app = current_app._get_current_object()
+        thread = threading.Thread(target=_run_generation, args=(app, count, set_active), daemon=True)
+        thread.start()
+        flash("Soru üretimi başlatıldı. Durum kutusundan takip edin.", "error")
     except Exception as exc:
         db.session.rollback()
-        flash(f"Sınav üretilemedi: {exc}", "error")
+        _set_generation_status("failed", f"Soru üretimi başarısız: {exc}", None)
+        flash(f"Soru üretimi başlatılamadı: {exc}", "error")
 
     return redirect(url_for("admin.placement_management"))
 

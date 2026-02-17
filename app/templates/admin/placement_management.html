@@ -1,4 +1,4 @@
-{% extends 'layout.html' %}
+﻿{% extends 'layout.html' %}
 {% block content %}
 <div class="section-header mb-6">
   <div>
@@ -7,6 +7,21 @@
     <p class="section-subtitle">Sınav grupları, prompt ayarları ve soru listesi.</p>
   </div>
 </div>
+
+{% if generation_status %}
+<div class="rounded-xl border border-rose-200 bg-rose-50 text-rose-700 p-4 mb-6">
+  <div class="font-semibold">Soru ?retimi Durumu</div>
+  <div class="text-sm mt-1">{{ generation_status.message }}</div>
+  {% if generation_status.updated_at %}
+    <div class="text-xs mt-2">G?ncelleme: {{ generation_status.updated_at }}</div>
+  {% endif %}
+</div>
+{% if generation_status.state in ['running','queued'] %}
+<script>
+  setTimeout(() => window.location.reload(), 15000);
+</script>
+{% endif %}
+{% endif %}
 
 <div class="stat-grid md:grid-cols-3 mb-6">
   <div class="stat-card">

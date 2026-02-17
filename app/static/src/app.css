@@ -347,6 +347,10 @@ body {
   box-shadow: 0 16px 30px rgba(31, 41, 51, 0.2);
 }
 
+.toast-error {
+  background: #e30a17;
+}
+
 .filter-block {
   border-radius: 16px;
   border: 1px solid #d9d2c8;
