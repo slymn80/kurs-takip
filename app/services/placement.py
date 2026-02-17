@@ -1,4 +1,5 @@
 ﻿import json
+import time
 import random
 import re
 import requests
@@ -326,7 +327,7 @@ def generate_questions(count=30):
             "https://api.openai.com/v1/chat/completions",
             headers=_openai_headers(),
             json=payload,
-            timeout=90
+            timeout=30
         )
         resp.raise_for_status()
         return resp.json()
@@ -343,6 +344,11 @@ def generate_questions(count=30):
             data = _request(payload)
         except requests.exceptions.ReadTimeout:
             last_error = "read_timeout"
+            time.sleep(1.5)
+            continue
+        except requests.exceptions.RequestException as exc:
+            last_error = f"request_error:{type(exc).__name__}"
+            time.sleep(1.5)
             continue
         except requests.HTTPError as exc:
             status = exc.response.status_code if exc.response is not None else None
