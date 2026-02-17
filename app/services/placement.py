@@ -327,7 +327,7 @@ def generate_questions(count=30):
             "https://api.openai.com/v1/chat/completions",
             headers=_openai_headers(),
             json=payload,
-            timeout=30
+            timeout=120
         )
         resp.raise_for_status()
         return resp.json()
