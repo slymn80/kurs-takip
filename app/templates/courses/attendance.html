@@ -22,12 +22,13 @@
   {% if active_qr %}
     <div class="mt-5 grid gap-4 md:grid-cols-[200px_1fr] items-center">
       <div class="soft-card p-3 flex items-center justify-center">
-        <img src="{{ url_for('courses.attendance_qr_image', session_id=session.id, token=active_qr.token) }}" alt="Yoklama QR" style="width:180px;height:180px;">
+        <img src="{{ url_for('courses.attendance_qr_image', session_id=session.id, token=active_qr.token) }}" alt="Yoklama QR" style="width:220px;height:220px;">
       </div>
       <div class="space-y-3">
         <div class="text-sm text-ink-500">Link</div>
         <input class="input" readonly value="{{ url_for('public.attendance_checkin', token=active_qr.token, _external=True) }}">
         <div class="text-xs text-ink-500">Bitiş: <span data-local-time="{{ active_qr.expires_at.isoformat() }}Z">{{ active_qr.expires_at.strftime('%d.%m.%Y %H:%M') }}</span></div>
+        <button type="button" class="btn-secondary" data-qr-open>Büyüt</button>
       </div>
     </div>
   {% else %}
@@ -47,7 +48,7 @@
     <tbody>
       {% for enrollment in enrollments %}
       {% set existing = existing_attendance.get(enrollment.student_id) %}
-      <tr data-student-id="{{ enrollment.student_id }}" data-has-attendance="{{ 1 if existing else 0 }}" data-present-initial="{{ 1 if existing and existing.status == 'present' else 0 }}" data-dirty="0" data-marked-at="{{ existing.marked_at.isoformat() if existing and existing.marked_at else '' }}">
+      <tr data-student-id="{{ enrollment.student_id }}" data-has-attendance="{{ 1 if existing else 0 }}" data-present-initial="{{ 1 if existing and existing.status == 'present' else 0 }}" data-dirty="0" data-marked-at="{{ (existing.marked_at.isoformat() + 'Z') if existing and existing.marked_at else '' }}">
         <td class="cell" data-label="Ad">
           <div class="cell-content flex items-center gap-2">
             <span>{{ enrollment.student.full_name }}</span>
@@ -72,6 +73,20 @@
   </table></div>
   <button class="btn-primary">Kaydet</button>
 </form>
+
+{% if active_qr %}
+<div class="modal-overlay" id="qr-modal">
+  <div class="modal-card">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-display text-lg">QR Yoklama</h3>
+      <button type="button" class="btn-secondary btn-sm" data-qr-close>Kapat</button>
+    </div>
+    <div class="flex items-center justify-center p-3">
+      <img src="{{ url_for('courses.attendance_qr_image', session_id=session.id, token=active_qr.token) }}" alt="Yoklama QR" style="width:80vw;max-width:420px;height:auto;">
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <script>
   const checkbox = document.getElementById('lesson_delivered');
@@ -183,5 +198,15 @@
     }
   };
   setInterval(pollAttendance, 8000);
+
+  const qrOpen = document.querySelector('[data-qr-open]');
+  const qrModal = document.getElementById('qr-modal');
+  const qrClose = document.querySelector('[data-qr-close]');
+  if (qrOpen && qrModal) {
+    qrOpen.addEventListener('click', () => qrModal.classList.add('is-open'));
+  }
+  if (qrClose && qrModal) {
+    qrClose.addEventListener('click', () => qrModal.classList.remove('is-open'));
+  }
 </script>
 {% endblock %}
