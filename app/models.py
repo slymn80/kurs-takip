@@ -172,6 +172,22 @@ class Attendance(db.Model):
     )
 
 
+class AttendanceQrToken(db.Model):
+    __tablename__ = "attendance_qr_tokens"
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey("sessions.id"), nullable=False)
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=now_utc)
+
+    session = db.relationship("Session")
+
+    __table_args__ = (
+        Index("ix_attendance_qr_session_expires", "session_id", "expires_at"),
+    )
+
+
 class SystemSetting(db.Model):
     __tablename__ = "system_settings"
     key = db.Column(db.String(80), primary_key=True)

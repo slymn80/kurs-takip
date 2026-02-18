@@ -1,6 +1,8 @@
 ﻿import io
 import os
-from datetime import datetime
+import secrets
+import qrcode
+from datetime import datetime, timedelta
 from flask import Blueprint, render_template, redirect, url_for, request, flash, send_file, abort
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_, func
@@ -9,7 +11,7 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from ...extensions import db, bcrypt
-from ...models import Course, Organization, CourseType, Location, Teacher, User, Student, Enrollment, Session, Attendance, AuditLog, CourseExamResult
+from ...models import Course, Organization, CourseType, Location, Teacher, User, Student, Enrollment, Session, Attendance, AuditLog, CourseExamResult, AttendanceQrToken
 from ...forms import CourseForm, SessionForm
 from ...security import require_roles
 from ...utils import generate_sessions, serialize_json, absence_ratio
@@ -553,6 +555,15 @@ def take_attendance(session_id):
     session = Session.query.get_or_404(session_id)
     course = _course_query_for_user().filter_by(id=session.course_id).first_or_404()
     enrollments = Enrollment.query.filter_by(course_id=course.id, status="active").all()
+    now = datetime.utcnow()
+    active_qr = (
+        AttendanceQrToken.query.filter(
+            AttendanceQrToken.session_id == session.id,
+            AttendanceQrToken.expires_at > now
+        )
+        .order_by(AttendanceQrToken.created_at.desc())
+        .first()
+    )
 
     if request.method == "POST":
         lesson_delivered = bool(request.form.get("lesson_delivered"))
@@ -622,7 +633,79 @@ def take_attendance(session_id):
         return redirect(url_for("courses.course_detail", course_id=course.id))
 
     existing_attendance = {a.student_id: a for a in Attendance.query.filter_by(session_id=session.id).all()}
-    return render_template("courses/attendance.html", course=course, session=session, enrollments=enrollments, existing_attendance=existing_attendance)
+    return render_template(
+        "courses/attendance.html",
+        course=course,
+        session=session,
+        enrollments=enrollments,
+        existing_attendance=existing_attendance,
+        active_qr=active_qr
+    )
+
+
+@courses_bp.route("/sessions/<int:session_id>/attendance/status")
+@login_required
+@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+def attendance_status(session_id):
+    session = Session.query.get_or_404(session_id)
+    course = _course_query_for_user().filter_by(id=session.course_id).first_or_404()
+    rows = Attendance.query.filter_by(session_id=session.id).all()
+    attendance = {}
+    present_ids = []
+    for row in rows:
+        attendance[row.student_id] = {
+            "status": row.status,
+            "note": row.note or ""
+        }
+        if row.status == "present":
+            present_ids.append(row.student_id)
+    return {"present_student_ids": present_ids, "attendance": attendance}
+
+
+@courses_bp.route("/sessions/<int:session_id>/attendance/qr", methods=["POST"])
+@login_required
+@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+def start_attendance_qr(session_id):
+    session = Session.query.get_or_404(session_id)
+    course = _course_query_for_user().filter_by(id=session.course_id).first_or_404()
+    token = secrets.token_urlsafe(16)
+    expires_at = datetime.utcnow() + timedelta(minutes=5)
+    qr_token = AttendanceQrToken(
+        session_id=session.id,
+        token=token,
+        expires_at=expires_at,
+        created_by_user_id=current_user.id
+    )
+    session.lesson_delivered = True
+    db.session.add(session)
+    db.session.add(qr_token)
+    db.session.add(AuditLog(
+        actor_user_id=current_user.id,
+        action="create",
+        entity_type="attendance_qr",
+        entity_id=session.id,
+        after_json=serialize_json({"expires_at": expires_at.isoformat()})
+    ))
+    db.session.commit()
+    flash("QR yoklama başlatıldı. 5 dakika geçerlidir.", "success")
+    return redirect(url_for("courses.take_attendance", session_id=session.id))
+
+
+@courses_bp.route("/sessions/<int:session_id>/attendance/qr-image/<token>")
+@login_required
+@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+def attendance_qr_image(session_id, token):
+    session = Session.query.get_or_404(session_id)
+    course = _course_query_for_user().filter_by(id=session.course_id).first_or_404()
+    qr_token = AttendanceQrToken.query.filter_by(session_id=session.id, token=token).first_or_404()
+    if qr_token.expires_at <= datetime.utcnow():
+        abort(404)
+    checkin_url = url_for("public.attendance_checkin", token=token, _external=True)
+    img = qrcode.make(checkin_url)
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return send_file(buf, mimetype="image/png")
 
 
 @courses_bp.route("/sessions/<int:session_id>/lesson-delivered", methods=["POST"])

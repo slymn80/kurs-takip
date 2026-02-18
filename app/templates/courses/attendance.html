@@ -7,6 +7,34 @@
     Saat: {{ session.start_time.strftime('%H:%M') if session.start_time else '-' }} - {{ session.end_time.strftime('%H:%M') if session.end_time else '-' }}
   </p>
 </div>
+
+<div class="card p-6 mb-6 max-w-3xl">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h3 class="font-display text-lg">QR ile Yoklama</h3>
+      <p class="text-ink-500 text-sm mt-1">QR 5 dakika geçerlidir. Öğrenci IIN girerek mevcut olur.</p>
+    </div>
+    <form method="post" action="{{ url_for('courses.start_attendance_qr', session_id=session.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn-accent">QR Oluştur</button>
+    </form>
+  </div>
+  {% if active_qr %}
+    <div class="mt-5 grid gap-4 md:grid-cols-[200px_1fr] items-center">
+      <div class="soft-card p-3 flex items-center justify-center">
+        <img src="{{ url_for('courses.attendance_qr_image', session_id=session.id, token=active_qr.token) }}" alt="Yoklama QR" style="width:180px;height:180px;">
+      </div>
+      <div class="space-y-3">
+        <div class="text-sm text-ink-500">Link</div>
+        <input class="input" readonly value="{{ url_for('public.attendance_checkin', token=active_qr.token, _external=True) }}">
+        <div class="text-xs text-ink-500">Bitiş: <span data-local-time="{{ active_qr.expires_at.isoformat() }}Z">{{ active_qr.expires_at.strftime('%d.%m.%Y %H:%M') }}</span></div>
+      </div>
+    </div>
+  {% else %}
+    <div class="mt-4 text-sm text-ink-500">Aktif QR yok. Oluştur butonuyla başlatabilirsiniz.</div>
+  {% endif %}
+</div>
+
 <form method="post" class="card p-6 space-y-4" id="attendance-form">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="flex items-center gap-3">
@@ -14,13 +42,16 @@
     <label for="lesson_delivered" class="text-sm">Ders işlendi</label>
     <span class="text-xs text-ink-400">İşlenmediyse yoklama girilmez.</span>
   </div>
-  <table class="table" id="attendance-table">
+  <table class="table" id="attendance-table" data-session-id="{{ session.id }}">
     <thead><tr><th>Ad</th><th>Durum</th><th>Not</th></tr></thead>
     <tbody>
       {% for enrollment in enrollments %}
       {% set existing = existing_attendance.get(enrollment.student_id) %}
-      <tr>
-        <td>{{ enrollment.student.full_name }}</td>
+      <tr data-student-id="{{ enrollment.student_id }}" data-has-attendance="{{ 1 if existing else 0 }}" data-present-initial="{{ 1 if existing and existing.status == 'present' else 0 }}" data-dirty="0">
+        <td class="flex items-center gap-2">
+          <span>{{ enrollment.student.full_name }}</span>
+          <span class="attendance-check text-emerald-600 font-semibold" style="display:none;">✓</span>
+        </td>
         <td>
           <select name="status_{{ enrollment.student_id }}" class="select">
             <option value="present" {% if existing and existing.status == 'present' %}selected{% endif %}>Mevcut</option>
@@ -51,5 +82,79 @@
   };
   checkbox.addEventListener('change', toggleInputs);
   toggleInputs();
+
+  const attendanceTable = document.getElementById('attendance-table');
+  const sessionId = attendanceTable?.getAttribute('data-session-id');
+  const markTick = (row, on) => {
+    const tick = row.querySelector('.attendance-check');
+    if (!tick) return;
+    tick.style.display = on ? 'inline-flex' : 'none';
+  };
+  const syncTicks = () => {
+    attendanceTable.querySelectorAll('tr[data-student-id]').forEach((row) => {
+      const presentInitial = row.getAttribute('data-present-initial') === '1';
+      markTick(row, presentInitial);
+    });
+  };
+  attendanceTable?.addEventListener('change', (event) => {
+    if (event.target && event.target.tagName === 'SELECT') {
+      const row = event.target.closest('tr[data-student-id]');
+      if (row) {
+        row.setAttribute('data-dirty', '1');
+        if (event.target.value === 'present') {
+          row.setAttribute('data-has-attendance', '1');
+        }
+        markTick(row, event.target.value === 'present' && row.getAttribute('data-has-attendance') === '1');
+      }
+    }
+  });
+  attendanceTable?.addEventListener('input', (event) => {
+    if (event.target && event.target.tagName === 'INPUT') {
+      const row = event.target.closest('tr[data-student-id]');
+      if (row) {
+        row.setAttribute('data-dirty', '1');
+      }
+    }
+  });
+  syncTicks();
+
+  const pollAttendance = async () => {
+    if (!sessionId) return;
+    try {
+      const resp = await fetch(`/courses/sessions/${sessionId}/attendance/status`, {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const present = new Set(data.present_student_ids || []);
+      const attendance = data.attendance || {};
+      attendanceTable.querySelectorAll('tr[data-student-id]').forEach((row) => {
+        const id = parseInt(row.getAttribute('data-student-id'), 10);
+        if (!Number.isNaN(id) && present.has(id)) {
+          row.setAttribute('data-has-attendance', '1');
+          row.setAttribute('data-present-initial', '1');
+          markTick(row, true);
+        }
+        if (!Number.isNaN(id) && attendance[id]) {
+          row.setAttribute('data-has-attendance', '1');
+          const isDirty = row.getAttribute('data-dirty') === '1';
+          if (!isDirty) {
+            const select = row.querySelector('select');
+            const noteInput = row.querySelector('input[name^="note_"]');
+            if (select) {
+              select.value = attendance[id].status || select.value;
+            }
+            if (noteInput) {
+              noteInput.value = attendance[id].note || noteInput.value;
+            }
+          }
+        }
+      });
+    } catch (err) {
+      // ignore polling errors
+    }
+  };
+  setInterval(pollAttendance, 8000);
 </script>
 {% endblock %}

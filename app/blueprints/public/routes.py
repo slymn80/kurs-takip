@@ -1,8 +1,9 @@
 ﻿import os
 import uuid
+from datetime import datetime
 from flask import Blueprint, render_template, request, flash, current_app, redirect, url_for
 from ...extensions import db
-from ...models import Student, Enrollment, Course, PreRegistration
+from ...models import Student, Enrollment, Course, PreRegistration, Session, Attendance, AttendanceQrToken
 from ...forms import PreRegistrationForm
 
 
@@ -218,3 +219,51 @@ def pre_registration():
         flash(t["success"], "success")
         return redirect(url_for("auth.login"))
     return render_template("public/pre_registration.html", form=form, max_file_kb=max_file_kb, t=t, lang=lang)
+
+
+@public_bp.route("/attendance/checkin/<token>", methods=["GET", "POST"])
+def attendance_checkin(token):
+    now = datetime.utcnow()
+    qr = AttendanceQrToken.query.filter_by(token=token).first()
+    if not qr or qr.expires_at <= now:
+        return render_template("public/attendance_checkin.html", status="expired")
+
+    session = Session.query.get(qr.session_id)
+    if not session:
+        return render_template("public/attendance_checkin.html", status="expired")
+    course = Course.query.get(session.course_id)
+    if not course:
+        return render_template("public/attendance_checkin.html", status="expired")
+
+    if request.method == "POST":
+        iin = (request.form.get("iin") or "").strip()
+        if not iin:
+            flash("IIN/T.C. alanı zorunludur.", "error")
+            return render_template("public/attendance_checkin.html", status="ready", course=course, session=session)
+
+        student = Student.query.filter_by(iin=iin).first()
+        if not student:
+            flash("Bu IIN/T.C. için kayıt bulunamadı.", "error")
+            return render_template("public/attendance_checkin.html", status="ready", course=course, session=session)
+
+        enrollment = Enrollment.query.filter_by(course_id=course.id, student_id=student.id, status="active").first()
+        if not enrollment:
+            flash("Bu IIN bu oturumda kayıtlı değil.", "error")
+            return render_template("public/attendance_checkin.html", status="ready", course=course, session=session)
+
+        existing = Attendance.query.filter_by(session_id=session.id, student_id=student.id).first()
+        if existing:
+            return render_template("public/attendance_checkin.html", status="already", course=course, session=session, student=student)
+
+        marker_user_id = course.teacher_user_id or course.created_by_user_id
+        db.session.add(Attendance(
+            session_id=session.id,
+            student_id=student.id,
+            status="present",
+            note="QR yoklama",
+            marked_by_user_id=marker_user_id
+        ))
+        db.session.commit()
+        return render_template("public/attendance_checkin.html", status="success", course=course, session=session, student=student)
+
+    return render_template("public/attendance_checkin.html", status="ready", course=course, session=session)

@@ -1,0 +1,64 @@
+{% extends 'layout.html' %}
+{% block auth %}
+<div class="min-h-screen flex items-center justify-center auth-shell p-6">
+  <div class="w-full max-w-xl card p-8">
+    <div class="mb-4">
+      <h1 class="font-display text-2xl">Yoklama Onayı</h1>
+      <p class="text-ink-500 mt-1">QR ile yoklama işlemi</p>
+    </div>
+
+    {% if status == "expired" %}
+      <div class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+        QR süresi dolmuş veya geçersiz. Lütfen öğretmenden yeni QR isteyin.
+      </div>
+    {% else %}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="space-y-2 mb-4">
+            {% for category, message in messages %}
+              <div class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <div class="grid gap-4 md:grid-cols-2 mb-4">
+        <div class="soft-card p-4">
+          <div class="text-xs uppercase tracking-wide text-ink-400">Kurs</div>
+          <div class="font-semibold">{{ course.title }}</div>
+          <div class="text-sm text-ink-500 mt-1">{{ session.session_date.strftime('%d.%m.%Y') }}</div>
+        </div>
+        <div class="soft-card p-4">
+          <div class="text-xs uppercase tracking-wide text-ink-400">Saat</div>
+          <div class="font-semibold">
+            {{ session.start_time.strftime('%H:%M') if session.start_time else '-' }} - {{ session.end_time.strftime('%H:%M') if session.end_time else '-' }}
+          </div>
+        </div>
+      </div>
+
+      {% if status == "success" %}
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-emerald-700">
+          <div class="font-semibold">Mevcut işlendi</div>
+          <div class="text-sm mt-1">{{ student.full_name }} için yoklama alındı.</div>
+        </div>
+      {% elif status == "already" %}
+        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-700">
+          <div class="font-semibold">Zaten mevcut sayıldınız</div>
+          <div class="text-sm mt-1">{{ student.full_name }} için daha önce yoklama alınmış.</div>
+        </div>
+      {% else %}
+        <form method="post" class="space-y-4">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div>
+            <label class="label">IIN / T.C.</label>
+            <input type="text" name="iin" class="input" placeholder="IIN / T.C. numaranız">
+          </div>
+          <button class="btn-primary w-full">Onayla ve Mevcut Ol</button>
+        </form>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
