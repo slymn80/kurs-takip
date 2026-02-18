@@ -17,7 +17,10 @@
   <div class="font-semibold">Soru Üretimi Durumu</div>
   <div class="text-sm mt-1">{{ generation_status.message }}</div>
   {% if generation_status.updated_at %}
-    <div class="text-xs mt-2">Güncelleme: {{ generation_status.updated_at }}</div>
+    <div class="text-xs mt-2">
+      Güncelleme:
+      <span data-local-time="{{ generation_status.updated_at }}Z">{{ generation_status.updated_at }}</span>
+    </div>
   {% endif %}
 </div>
 {% if generation_status.state in ['running','queued'] %}
