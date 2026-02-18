@@ -123,7 +123,14 @@ def users():
         flash("Kullanıcı oluşturuldu. Geçici şifre hazır.", "success")
         return redirect(url_for("admin.users"))
     items = User.query.order_by(User.created_at.desc()).all()
-    return render_template("admin/users.html", form=form, items=items)
+    active_items = [u for u in items if u.is_active]
+    inactive_items = [u for u in items if not u.is_active]
+    return render_template(
+        "admin/users.html",
+        form=form,
+        items=active_items,
+        inactive_items=inactive_items
+    )
 
 
 @admin_bp.route("/users/clear-temp-password", methods=["POST"])
@@ -241,6 +248,27 @@ def delete_user(user_id):
         db.session.rollback()
         flash("Kullanıcı silme sırasında beklenmeyen bir hata oluştu.", "error")
         return redirect(url_for("admin.users"))
+
+
+@admin_bp.route("/users/<int:user_id>/toggle-active", methods=["POST"])
+@login_required
+@require_roles("admin")
+def toggle_user_active(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.id == current_user.id and user.is_active:
+        flash("Kendi hesabınızı pasif yapamazsınız.", "error")
+        return redirect(url_for("admin.users"))
+    user.is_active = not user.is_active
+    db.session.add(AuditLog(
+        actor_user_id=current_user.id,
+        action="status_update",
+        entity_type="user",
+        entity_id=user.id,
+        after_json=serialize_json({"is_active": user.is_active})
+    ))
+    db.session.commit()
+    flash("Kullanıcı durumu güncellendi.", "success")
+    return redirect(url_for("admin.users"))
 
 
 @admin_bp.route("/settings", methods=["GET", "POST"])

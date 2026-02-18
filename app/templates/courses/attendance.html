@@ -47,10 +47,11 @@
     <tbody>
       {% for enrollment in enrollments %}
       {% set existing = existing_attendance.get(enrollment.student_id) %}
-      <tr data-student-id="{{ enrollment.student_id }}" data-has-attendance="{{ 1 if existing else 0 }}" data-present-initial="{{ 1 if existing and existing.status == 'present' else 0 }}" data-dirty="0">
+      <tr data-student-id="{{ enrollment.student_id }}" data-has-attendance="{{ 1 if existing else 0 }}" data-present-initial="{{ 1 if existing and existing.status == 'present' else 0 }}" data-dirty="0" data-marked-at="{{ existing.marked_at.isoformat() if existing and existing.marked_at else '' }}">
         <td class="flex items-center gap-2">
           <span>{{ enrollment.student.full_name }}</span>
           <span class="attendance-check text-emerald-600 font-semibold" style="display:none;">✓</span>
+          <span class="attendance-time text-emerald-600 text-xs" style="display:none;"></span>
         </td>
         <td>
           <select name="status_{{ enrollment.student_id }}" class="select">
@@ -85,15 +86,32 @@
 
   const attendanceTable = document.getElementById('attendance-table');
   const sessionId = attendanceTable?.getAttribute('data-session-id');
+  const formatLocal = (iso) => {
+    if (!iso) return '';
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return '';
+    const pad = (v) => String(v).padStart(2, '0');
+    return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  };
   const markTick = (row, on) => {
     const tick = row.querySelector('.attendance-check');
+    const timeEl = row.querySelector('.attendance-time');
     if (!tick) return;
     tick.style.display = on ? 'inline-flex' : 'none';
+    if (timeEl) {
+      timeEl.style.display = on ? 'inline-flex' : 'none';
+    }
   };
   const syncTicks = () => {
     attendanceTable.querySelectorAll('tr[data-student-id]').forEach((row) => {
       const presentInitial = row.getAttribute('data-present-initial') === '1';
       markTick(row, presentInitial);
+      if (presentInitial) {
+        const timeEl = row.querySelector('.attendance-time');
+        if (timeEl) {
+          timeEl.textContent = formatLocal(row.getAttribute('data-marked-at'));
+        }
+      }
     });
   };
   attendanceTable?.addEventListener('change', (event) => {
@@ -134,7 +152,14 @@
         if (!Number.isNaN(id) && present.has(id)) {
           row.setAttribute('data-has-attendance', '1');
           row.setAttribute('data-present-initial', '1');
+          if (attendance[id]?.marked_at) {
+            row.setAttribute('data-marked-at', attendance[id].marked_at);
+          }
           markTick(row, true);
+          const timeEl = row.querySelector('.attendance-time');
+          if (timeEl) {
+            timeEl.textContent = formatLocal(row.getAttribute('data-marked-at'));
+          }
         }
         if (!Number.isNaN(id) && attendance[id]) {
           row.setAttribute('data-has-attendance', '1');

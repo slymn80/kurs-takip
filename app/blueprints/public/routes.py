@@ -264,6 +264,6 @@ def attendance_checkin(token):
             marked_by_user_id=marker_user_id
         ))
         db.session.commit()
-        return render_template("public/attendance_checkin.html", status="success", course=course, session=session, student=student)
+        return render_template("public/attendance_checkin.html", status="success", course=course, session=session, student=student, datetime=datetime)
 
     return render_template("public/attendance_checkin.html", status="ready", course=course, session=session)

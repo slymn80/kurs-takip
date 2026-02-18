@@ -42,6 +42,7 @@
         <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-emerald-700">
           <div class="font-semibold">Mevcut işlendi</div>
           <div class="text-sm mt-1">{{ student.full_name }} için yoklama alındı.</div>
+          <div class="text-xs mt-2 text-emerald-700">Tarih/Saat: {{ datetime.utcnow().strftime('%d.%m.%Y %H:%M:%S') }}</div>
         </div>
       {% elif status == "already" %}
         <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-amber-700">

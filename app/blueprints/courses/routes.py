@@ -655,7 +655,8 @@ def attendance_status(session_id):
     for row in rows:
         attendance[row.student_id] = {
             "status": row.status,
-            "note": row.note or ""
+            "note": row.note or "",
+            "marked_at": row.marked_at.isoformat() if row.marked_at else None
         }
         if row.status == "present":
             present_ids.append(row.student_id)

@@ -71,7 +71,7 @@ class Student(db.Model):
     __tablename__ = "students"
     id = db.Column(db.Integer, primary_key=True)
     full_name = db.Column(db.String(120), nullable=False)
-    iin = db.Column(db.String(20), nullable=False)
+    iin = db.Column(db.String(20), nullable=False, unique=True)
     education_level = db.Column(db.String(40), nullable=False)
     phone = db.Column(db.String(30))
     email = db.Column(db.String(120))
