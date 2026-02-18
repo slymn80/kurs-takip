@@ -50,7 +50,7 @@
   </div>
   <div class="card p-6 lg:col-span-2">
     <h2 class="font-display text-xl mb-4">Öğretmenler</h2>
-    <table class="table">
+    <div class="table-scroll"><table class="table">
       {% set branch_labels = {"turkish":"Türkçe","english":"İngilizce","kazakh":"Kazakça","russian":"Rusça","mathematics":"Matematik","it":"Bilişim Teknolojileri","music":"Müzik","other":"Diğer"} %}
       <thead><tr><th>No</th><th>Ad</th><th>Ünvan</th><th>Branş</th><th>Telefon</th><th></th></tr></thead>
       <tbody>
@@ -73,7 +73,7 @@
         </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </div>
 </div>
 <script>

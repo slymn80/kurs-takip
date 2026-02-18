@@ -37,7 +37,7 @@
       </div>
     </form>
     <div class="table-card">
-      <table class="table">
+      <div class="table-scroll"><table class="table">
         <thead><tr><th>Kurs</th><th>Durum</th><th>Başlangıç</th><th>Bitiş</th></tr></thead>
         <tbody>
           {% for c in courses %}
@@ -51,7 +51,7 @@
             <tr><td colspan="4" class="text-ink-400">Veri yok.</td></tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     </div>
   </div>
 
@@ -81,7 +81,7 @@
       </div>
     </form>
     <div class="table-card">
-      <table class="table">
+      <div class="table-scroll"><table class="table">
         <thead><tr><th>Kurs</th><th>Öğrenci</th><th>IIN</th><th>Telefon</th></tr></thead>
         <tbody>
           {% for e in course_students %}
@@ -95,7 +95,7 @@
             <tr><td colspan="4" class="text-ink-400">Veri yok.</td></tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     </div>
   </div>
 
@@ -125,7 +125,7 @@
       </div>
     </form>
     <div class="table-card">
-      <table class="table">
+      <div class="table-scroll"><table class="table">
         <thead>
           <tr>
             {% if selected_teacher_id %}
@@ -155,7 +155,7 @@
             <tr><td colspan="5" class="text-ink-400">Veri yok.</td></tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
     </div>
   </div>
 

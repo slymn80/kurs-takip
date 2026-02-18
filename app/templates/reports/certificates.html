@@ -28,7 +28,7 @@
 </form>
 
 <div class="card p-6">
-  <table class="table">
+  <div class="table-scroll"><table class="table">
     <thead><tr><th>No</th><th>Kursiyer</th><th>Kurs</th><th>IIN</th><th>Sınav</th><th>Durum</th><th></th></tr></thead>
     <tbody>
       {% for e in enrollments %}
@@ -56,7 +56,7 @@
         <tr><td colspan="7" class="text-ink-400">Uygun kursiyer bulunamadı.</td></tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 
 <div class="card p-6 mt-6">

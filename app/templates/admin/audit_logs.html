@@ -2,7 +2,7 @@
 {% block content %}
 <h2 class="font-display text-2xl mb-4">Denetim Logları</h2>
 <div class="card p-6">
-  <table class="table">
+  <div class="table-scroll"><table class="table">
     <thead><tr><th>Tarih</th><th>İşlem</th><th>Tip</th><th>Kullanıcı</th></tr></thead>
     <tbody>
       {% for log in logs %}
@@ -22,6 +22,6 @@
       </tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 {% endblock %}

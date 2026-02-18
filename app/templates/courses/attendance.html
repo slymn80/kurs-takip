@@ -42,18 +42,20 @@
     <label for="lesson_delivered" class="text-sm">Ders işlendi</label>
     <span class="text-xs text-ink-400">İşlenmediyse yoklama girilmez.</span>
   </div>
-  <table class="table" id="attendance-table" data-session-id="{{ session.id }}">
+  <div class="table-scroll"><table class="table table-mobile" id="attendance-table" data-session-id="{{ session.id }}">
     <thead><tr><th>Ad</th><th>Durum</th><th>Not</th></tr></thead>
     <tbody>
       {% for enrollment in enrollments %}
       {% set existing = existing_attendance.get(enrollment.student_id) %}
       <tr data-student-id="{{ enrollment.student_id }}" data-has-attendance="{{ 1 if existing else 0 }}" data-present-initial="{{ 1 if existing and existing.status == 'present' else 0 }}" data-dirty="0" data-marked-at="{{ existing.marked_at.isoformat() if existing and existing.marked_at else '' }}">
-        <td class="flex items-center gap-2">
-          <span>{{ enrollment.student.full_name }}</span>
-          <span class="attendance-check text-emerald-600 font-semibold" style="display:none;">✓</span>
-          <span class="attendance-time text-emerald-600 text-xs" style="display:none;"></span>
+        <td class="cell" data-label="Ad">
+          <div class="cell-content flex items-center gap-2">
+            <span>{{ enrollment.student.full_name }}</span>
+            <span class="attendance-check text-emerald-600 font-semibold" style="display:none;">✓</span>
+            <span class="attendance-time text-emerald-600 text-xs" style="display:none;"></span>
+          </div>
         </td>
-        <td>
+        <td class="cell" data-label="Durum">
           <select name="status_{{ enrollment.student_id }}" class="select">
             <option value="present" {% if existing and existing.status == 'present' %}selected{% endif %}>Mevcut</option>
             <option value="absent" {% if existing and existing.status == 'absent' %}selected{% endif %}>Yok</option>
@@ -61,13 +63,13 @@
             <option value="excused" {% if existing and existing.status == 'excused' %}selected{% endif %}>Mazeretli</option>
           </select>
         </td>
-        <td>
+        <td class="cell" data-label="Not">
           <input type="text" name="note_{{ enrollment.student_id }}" value="{{ existing.note if existing else '' }}" class="input">
         </td>
       </tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
   <button class="btn-primary">Kaydet</button>
 </form>
 

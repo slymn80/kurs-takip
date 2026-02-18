@@ -2,6 +2,7 @@
 load_dotenv()
 
 from flask import Flask, request, flash, redirect, url_for, jsonify
+from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import Forbidden
 from .config import Config
 from .extensions import db, login_manager, bcrypt, migrate, csrf
@@ -20,6 +21,11 @@ def create_app(config_class=Config):
     bcrypt.init_app(app)
     migrate.init_app(app, db)
     csrf.init_app(app)
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(_error):
+        flash("Oturum süresi doldu. Lütfen tekrar giriş yapın.", "error")
+        return redirect(request.referrer or url_for("auth.login"))
 
     login_manager.login_view = "auth.login"
 

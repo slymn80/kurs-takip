@@ -151,6 +151,11 @@ body {
   background: var(--surface);
 }
 
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .table-toolbar {
   display: flex;
   align-items: center;
@@ -182,9 +187,85 @@ body {
   background: #efeae1;
 }
 
+.table-mobile .cell {
+  vertical-align: top;
+}
+
 .stat-grid {
   display: grid;
   gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .table {
+    min-width: 640px;
+  }
+  .btn {
+    width: 100%;
+  }
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .app-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .table-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .card {
+    padding: 16px;
+  }
+  .filter-card {
+    padding: 12px;
+  }
+  .btn-group {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .btn-group .btn {
+    width: auto;
+  }
+  .table-mobile thead {
+    display: none;
+  }
+  .table-mobile tr {
+    display: block;
+    border: 1px solid #e4ddd2;
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 12px;
+    background: #ffffff;
+  }
+  .table-mobile td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 10px;
+    border-top: 0;
+  }
+  .table-mobile td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #5a6672;
+    flex: 0 0 auto;
+  }
+  .table-mobile .cell-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .table-mobile .select,
+  .table-mobile .input {
+    max-width: 220px;
+  }
 }
 
 .stat-card {

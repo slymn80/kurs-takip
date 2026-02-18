@@ -9,7 +9,7 @@
 </div>
 
 <div class="card p-6">
-  <table class="table">
+  <div class="table-scroll"><table class="table">
     <thead><tr><th>No</th><th>Başlık</th><th>Öğretmen</th><th>Tarih</th><th>Durum</th><th></th></tr></thead>
     <tbody>
       {% for item in items %}
@@ -32,7 +32,7 @@
       <tr><td colspan="6" class="text-ink-400">Yarım kalan kurs yok.</td></tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 
 <div id="restore-modal" class="fixed inset-0 bg-ink-900/30 backdrop-blur-sm hidden z-50">

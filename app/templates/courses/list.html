@@ -15,7 +15,7 @@
 </div>
 
 <div class="card p-6">
-  <table class="table">
+  <div class="table-scroll"><table class="table">
     <thead><tr><th>No</th><th>Başlık</th><th>Öğretmen</th><th>Tarih</th><th>Durum</th><th class="text-right">İşlemler</th></tr></thead>
     <tbody>
       {% for item in items %}
@@ -59,7 +59,7 @@
       <tr><td colspan="6" class="text-ink-400">Kurs bulunamadı.</td></tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 
 <div id="deleteCourseModal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">

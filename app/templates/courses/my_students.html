@@ -13,7 +13,7 @@
       {% endfor %}
     </select>
   </form>
-  <table class="table">
+  <div class="table-scroll"><table class="table">
     <thead><tr><th>No</th><th>Kurs</th><th>Ad</th><th>IIN/TC</th><th>Eğitim</th><th>Telefon</th><th></th></tr></thead>
     <tbody>
       {% for enrollment, student, course in rows %}
@@ -33,6 +33,6 @@
       <tr><td colspan="7" class="text-ink-400">Kursiyer yok.</td></tr>
       {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 {% endblock %}

@@ -13,7 +13,7 @@ class Config:
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SECURE = os.getenv("REMEMBER_COOKIE_SECURE", "false").lower() == "true"
     PREFERRED_URL_SCHEME = "https" if SESSION_COOKIE_SECURE else "http"
-    WTF_CSRF_TIME_LIMIT = int(os.getenv("WTF_CSRF_TIME_LIMIT", "3600"))
+    WTF_CSRF_TIME_LIMIT = int(os.getenv("WTF_CSRF_TIME_LIMIT", "14400"))
     N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "")
     WHATSAPP_PROVIDER = os.getenv("WHATSAPP_PROVIDER", "disabled")
     TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")

@@ -36,7 +36,7 @@
   </div>
   <div class="card p-6 lg:col-span-2">
     <h2 class="font-display text-xl mb-4">Aktif Kullanıcılar</h2>
-    <table class="table">
+    <div class="table-scroll"><table class="table">
       <thead><tr><th>No</th><th>Kullanıcı</th><th>Rol</th><th>Durum</th><th></th></tr></thead>
       <tbody>
         {% for item in items %}
@@ -67,14 +67,14 @@
         </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </div>
 </div>
 
 {% if inactive_items %}
   <div class="card p-6 mt-6">
     <h2 class="font-display text-xl mb-4">Aktif Olmayan Kullanıcılar</h2>
-    <table class="table">
+    <div class="table-scroll"><table class="table">
       <thead><tr><th>No</th><th>Kullanıcı</th><th>Rol</th><th>Durum</th><th></th></tr></thead>
       <tbody>
         {% for item in inactive_items %}
@@ -105,7 +105,7 @@
         </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </div>
 {% endif %}
 {% endblock %}

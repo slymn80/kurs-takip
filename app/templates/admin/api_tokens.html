@@ -27,7 +27,7 @@
   </div>
   <div class="card p-6 lg:col-span-2">
     <h2 class="font-display text-xl mb-4">API Tokenlar</h2>
-    <table class="table">
+    <div class="table-scroll"><table class="table">
       <thead><tr><th>Kullanıcı</th><th>Ad</th><th>Durum</th><th>Oluşturma</th><th>Son Kullanım</th><th></th></tr></thead>
       <tbody>
         {% for token in tokens %}
@@ -50,7 +50,7 @@
         <tr><td colspan="6" class="text-ink-400">Token yok.</td></tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </div>
 </div>
 {% endblock %}

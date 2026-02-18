@@ -22,7 +22,7 @@
       <button class="btn-primary">Ekle</button>
     </form>
     {% endif %}
-    <table class="table">
+    <div class="table-scroll"><table class="table">
       <thead><tr><th>No</th><th>Ad</th><th>Telefon</th><th>Durum</th><th></th></tr></thead>
       <tbody>
         {% for enrollment in enrollments %}
@@ -44,7 +44,7 @@
         <tr><td colspan="5" class="text-ink-400">Kursiyer yok.</td></tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </div>
   <div class="card p-6">
     <h3 class="font-display text-xl mb-4">Bilgiler</h3>
@@ -63,7 +63,7 @@
     <h3 class="font-display text-xl">Oturumlar</h3>
   </div>
   <div class="card p-6">
-    <table class="table">
+    <div class="table-scroll"><table class="table">
       <thead><tr><th>No</th><th>Tarih</th><th>Saat</th><th>Ders İşlendi</th><th>Toplam/Katılan</th><th>PDF</th><th></th></tr></thead>
       <tbody>
         {% for session in sessions %}
@@ -101,7 +101,7 @@
         <tr><td colspan="7" class="text-ink-400">Oturum yok.</td></tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </div>
 </section>
 
@@ -116,7 +116,7 @@
   <div class="card p-6">
     <form method="post" action="{{ url_for('courses.save_exam_results', course_id=course.id) }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <table class="table">
+      <div class="table-scroll"><table class="table">
         <thead><tr><th>No</th><th>Kursiyer</th><th>IIN/TC</th><th>Sınav Puanı</th><th>Başarı</th><th>Değerlendirildi</th></tr></thead>
         <tbody>
           {% for enrollment in enrollments %}
@@ -147,7 +147,7 @@
             <tr><td colspan="6" class="text-ink-400">Kursiyer yok.</td></tr>
           {% endfor %}
         </tbody>
-      </table>
+      </table></div>
       <div class="mt-4 flex items-center justify-end">
         <button class="btn-primary">Değerlendirmeyi Kaydet</button>
       </div>

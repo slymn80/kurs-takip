@@ -26,7 +26,7 @@
   </div>
   <div class="card p-6 lg:col-span-2">
     <h2 class="font-display text-xl mb-4">Kurs Tipleri</h2>
-    <table class="table">
+    <div class="table-scroll"><table class="table">
       <thead><tr><th>No</th><th>Ad</th><th>Kurs Saati</th><th>Öğretim Şekli</th><th>Açıklama</th><th></th></tr></thead>
       <tbody>
         {% for item in items %}
@@ -50,7 +50,7 @@
         </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </div>
 </div>
 {% endblock %}
