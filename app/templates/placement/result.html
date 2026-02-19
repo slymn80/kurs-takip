@@ -10,6 +10,7 @@
       <div class="flex flex-col items-end gap-2">
         <a class="btn-secondary btn-sm" href="{{ url_for('placement.result_pdf', test_id=test.id) }}">PDF İndir</a>
         <a class="btn-ghost btn-sm" href="{{ url_for('placement.landing', iin=candidate.iin) }}">Geçmiş Sonuçlar</a>
+        <a class="btn-ghost btn-sm" href="{{ url_for('auth.login') }}">Login sayfasına dön</a>
       </div>
     </div>
 

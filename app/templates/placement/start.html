@@ -4,6 +4,9 @@
   <div class="w-full max-w-xl card p-8">
     <h1 class="font-display text-3xl mb-2">Sınava Başla</h1>
     <p class="text-ink-500 mb-6">Toplam 30 soru, süre sınırı yok. Lütfen dikkatle cevaplayın.</p>
+    <div class="mb-4">
+      <a href="{{ url_for('auth.login') }}" class="btn-ghost btn-sm">Login sayfasına dön</a>
+    </div>
     <div class="rounded-xl border border-ink-100 bg-ink-50 p-4 text-sm text-ink-600 mb-6">
       Aday: {{ candidate.full_name }} · IIN: {{ candidate.iin }}
     </div>

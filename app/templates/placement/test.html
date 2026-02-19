@@ -4,6 +4,9 @@
   <div class="max-w-4xl mx-auto card p-8">
     <h1 class="font-display text-3xl mb-2">Türkçe Seviye Tespit Sınavı</h1>
     <p class="text-ink-500 mb-6">30 soru · 4 beceri: Okuma, Dilbilgisi, Kelime, İletişim</p>
+    <div class="mb-4">
+      <a href="{{ url_for('auth.login') }}" class="btn-ghost btn-sm">Login sayfasına dön</a>
+    </div>
     <form method="post" class="space-y-6">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       {% for q in questions %}
