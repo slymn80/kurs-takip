@@ -54,6 +54,7 @@
   <div class="flex items-end gap-2">
     <button class="btn-primary">Filtrele</button>
     <a href="{{ url_for('admin.pre_registrations') }}" class="btn-ghost">Temizle</a>
+    <a href="{{ url_for('admin.pre_registrations_pdf', status=status, q=search) }}" class="btn-secondary">PDF İndir</a>
   </div>
 </form>
 

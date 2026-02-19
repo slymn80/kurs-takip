@@ -1,12 +1,18 @@
-﻿import json
+﻿import io
+import json
+import os
 import threading
 from datetime import datetime
 from sqlalchemy import func
 import secrets
 import string
-from flask import Blueprint, render_template, redirect, url_for, request, flash, session, current_app
+from flask import Blueprint, render_template, redirect, url_for, request, flash, session, current_app, send_file
 from sqlalchemy.exc import IntegrityError
 from flask_login import login_required, current_user
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from ...extensions import db, bcrypt
 from ...models import (
     User,
@@ -37,6 +43,21 @@ from ...services.placement import create_question_group
 
 admin_bp = Blueprint("admin", __name__)
 generation_status = None
+
+def _pdf_font_name():
+    candidates = [
+        ("Arial", r"C:\Windows\Fonts\arial.ttf"),
+        ("DejaVuSans", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+        ("NotoSans", "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"),
+    ]
+    for name, path in candidates:
+        if os.path.exists(path):
+            try:
+                pdfmetrics.registerFont(TTFont(name, path))
+                return name
+            except Exception:
+                continue
+    return "Helvetica"
 
 def _generate_password(length=12):
     alphabet = string.ascii_letters + string.digits + "!@#$%?"
@@ -761,6 +782,90 @@ def pre_registrations():
     )
 
 
+@admin_bp.route("/pre-registrations/pdf")
+@login_required
+@require_roles("admin")
+def pre_registrations_pdf():
+    status = (request.args.get("status") or "pending").strip()
+    search = (request.args.get("q") or "").strip()
+    query = PreRegistration.query
+    if status and status != "all":
+        query = query.filter(PreRegistration.status == status)
+    if search:
+        query = query.filter(
+            PreRegistration.full_name.ilike(f"%{search}%") |
+            PreRegistration.iin.ilike(f"%{search}%") |
+            PreRegistration.phone.ilike(f"%{search}%")
+        )
+    items = query.order_by(PreRegistration.created_at.desc()).all()
+
+    status_labels = {
+        "pending": "Bekleyen",
+        "approved": "Onaylı",
+        "rejected": "Reddedilen",
+        "all": "Tümü",
+    }
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    font_name = _pdf_font_name()
+    page_num = 1
+    generated_at = datetime.now().strftime("%d.%m.%Y %H:%M")
+
+    def footer():
+        c.setFont(font_name, 8)
+        c.drawString(40, 20, generated_at)
+        c.drawRightString(width - 40, 20, f"Sayfa {page_num}")
+
+    def trim(text, max_len):
+        value = str(text or "")
+        return value if len(value) <= max_len else f"{value[:max_len - 1]}…"
+
+    def draw_header(start_y):
+        c.setFont(font_name, 14)
+        c.drawString(40, start_y, "Ön Kayıt Listesi")
+        c.setFont(font_name, 9)
+        c.drawString(40, start_y - 16, f"Durum: {status_labels.get(status, status)}")
+        c.drawString(220, start_y - 16, f"Arama: {search or '-'}")
+        c.drawRightString(width - 40, start_y - 16, f"Kayıt: {len(items)}")
+        y = start_y - 36
+        c.setFont(font_name, 9)
+        c.drawString(40, y, "Tarih")
+        c.drawString(98, y, "Ad Soyad")
+        c.drawString(238, y, "IIN")
+        c.drawString(318, y, "Telefon")
+        c.drawString(394, y, "Seviye")
+        c.drawString(466, y, "Durum")
+        c.drawString(526, y, "E-posta")
+        return y - 14
+
+    y = draw_header(height - 40)
+    c.setFont(font_name, 9)
+    for item in items:
+        if y < 60:
+            footer()
+            c.showPage()
+            page_num += 1
+            y = draw_header(height - 40)
+            c.setFont(font_name, 9)
+        created_at = item.created_at.strftime("%d.%m.%Y") if item.created_at else "-"
+        c.drawString(40, y, created_at)
+        c.drawString(98, y, trim(item.full_name, 26))
+        c.drawString(238, y, trim(item.iin, 12))
+        c.drawString(318, y, trim(item.phone, 14))
+        c.drawString(394, y, trim(item.course_level, 10))
+        c.drawString(466, y, status_labels.get(item.status, item.status))
+        c.drawString(526, y, trim(item.email or "-", 18))
+        y -= 14
+
+    footer()
+    c.save()
+    buffer.seek(0)
+    filename = f"pre_registrations_{status}_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype="application/pdf")
+
+
 @admin_bp.route("/pre-registrations/<int:prereg_id>/status", methods=["POST"])
 @login_required
 @require_roles("admin")
@@ -992,3 +1097,5 @@ def deactivate_placement_question(question_id):
     db.session.commit()
     flash("Soru pasif yapıldı.", "success")
     return redirect(url_for("admin.placement_management", **request.args))
+
+

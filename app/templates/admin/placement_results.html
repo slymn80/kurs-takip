@@ -127,10 +127,13 @@
           <td>{{ item.group_name }}</td>
           <td>{{ item.model_used or '-' }}</td>
           <td>
-            <form method="post" action="{{ url_for('admin.delete_placement_result', test_id=item.id) }}" onsubmit="return confirm('Bu sonucu silmek istiyor musunuz?')">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="btn-danger btn-sm">Sil</button>
-            </form>
+            <div class="flex items-center gap-2">
+              <a class="btn-secondary btn-sm" href="{{ url_for('placement.result_pdf', test_id=item.id) }}">PDF</a>
+              <form method="post" action="{{ url_for('admin.delete_placement_result', test_id=item.id) }}" onsubmit="return confirm('Bu sonucu silmek istiyor musunuz?')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn-danger btn-sm">Sil</button>
+              </form>
+            </div>
           </td>
         </tr>
       {% else %}

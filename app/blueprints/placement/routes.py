@@ -195,9 +195,9 @@ def result_pdf(test_id):
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
     font_name = _pdf_font_name()
-    c.setTitle("S?nav Sonucu")
+    c.setTitle("Sınav Sonucu")
     c.setFont(font_name, 16)
-    c.drawString(40, height - 50, "Seviye Tespit S?nav? Sonucu")
+    c.drawString(40, height - 50, "Seviye Tespit Sınavı Sonucu")
 
     c.setFont(font_name, 11)
     y = height - 90
@@ -218,12 +218,12 @@ def result_pdf(test_id):
     draw_line("Telefon", candidate.phone or "-")
     draw_line("E-posta", candidate.email or "-")
     y -= 6
-    draw_line("S?nav Grubu", group_name)
-    draw_line("Soru Say?s?", str(total))
-    draw_line("Do?ru Say?s?", f"{correct} / {total}")
+    draw_line("Sınav Grubu", group_name)
+    draw_line("Soru Sayısı", str(total))
+    draw_line("Doğru Sayısı", f"{correct} / {total}")
     draw_line("Skor", f"%{test.score_percent}")
     draw_line("Seviye", test.level or "-")
-    draw_line("Ba?lad?", started_at)
+    draw_line("Başladı", started_at)
     draw_line("Bitti", completed_at)
     draw_line("Model", test.model_used or "-")
 
