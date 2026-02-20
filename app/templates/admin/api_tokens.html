@@ -1,4 +1,4 @@
-{% extends 'layout.html' %}
+﻿{% extends 'layout.html' %}
 {% block content %}
 <div class="grid lg:grid-cols-3 gap-6">
   <div class="card p-6 lg:col-span-1">
@@ -26,7 +26,9 @@
     <p class="text-xs text-ink-400 mt-3">Token sadece bir kez gösterilir. Kaybetmeyin.</p>
   </div>
   <div class="card p-6 lg:col-span-2">
-    <h2 class="font-display text-xl mb-4">API Tokenlar</h2>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-display text-xl">API Tokenlar</h2>
+    </div>
     <div class="table-scroll"><table class="table">
       <thead><tr><th>Kullanıcı</th><th>Ad</th><th>Durum</th><th>Oluşturma</th><th>Son Kullanım</th><th></th></tr></thead>
       <tbody>
@@ -39,6 +41,7 @@
           <td>{{ token.last_used_at|tr_date }}</td>
           <td class="text-right">
             {% if token.is_active %}
+            <a href="{{ url_for('admin.api_token_test', token_id=token.id) }}" target="_blank" rel="noopener" class="btn-secondary">Test</a>
             <form method="post" action="{{ url_for('admin.revoke_api_token', token_id=token.id) }}" class="inline" onsubmit="return confirm('Token iptal edilsin mi?')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn-secondary">İptal</button>

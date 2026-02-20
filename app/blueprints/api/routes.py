@@ -1,8 +1,10 @@
 from datetime import datetime, date
 from flask import Blueprint, jsonify, request, g
+from sqlalchemy import func
+from flask_login import current_user
 from ...extensions import db
-from ...models import Course, Enrollment, Session, Attendance, Teacher, Organization, CourseType, Location
-from ...security import require_api_roles, require_api_user
+from ...models import Course, Enrollment, Session, Attendance, Teacher, Organization, CourseType, Location, Student
+from ...security import require_api_roles, require_api_user, authenticate_api_token
 from ...services.notifications import emit_webhook
 
 
@@ -10,7 +12,7 @@ api_bp = Blueprint("api", __name__)
 
 
 def _course_query_for_user(user):
-    query = Course.query
+    query = Course.query.filter(Course.status == "active")
     if user.role == "teacher":
         teacher = Teacher.query.filter_by(user_id=user.id).first()
         if teacher:
@@ -144,3 +146,139 @@ def attendance(session_id):
 def summary():
     active_courses = _course_query_for_user(g.api_user).filter(Course.status == "active").count()
     return jsonify({"active_courses": active_courses})
+
+
+@api_bp.route("/reports/daily-course-sessions", methods=["GET"])
+def daily_course_sessions():
+    user = authenticate_api_token()
+    if user:
+        if user.role != "admin":
+            return jsonify({"error": "forbidden"}), 403
+    else:
+        if current_user.is_authenticated and current_user.role == "admin":
+            user = current_user
+        elif current_user.is_authenticated:
+            return jsonify({"error": "forbidden"}), 403
+        else:
+            return jsonify({"error": "unauthorized"}), 401
+    g.api_user = user
+
+    raw_date = (request.args.get("date") or "").strip()
+    if raw_date:
+        try:
+            target_date = date.fromisoformat(raw_date)
+        except ValueError:
+            return jsonify({"error": "invalid_date", "expected": "YYYY-MM-DD"}), 400
+    else:
+        target_date = date.today()
+
+    base_course_query = _course_query_for_user(g.api_user).with_entities(Course.id)
+    sessions = (
+        db.session.query(Session, Course)
+        .join(Course, Course.id == Session.course_id)
+        .filter(Session.session_date == target_date)
+        .filter(Course.status == "active")
+        .filter(Course.id.in_(base_course_query))
+        .order_by(Course.title.asc(), Session.start_time.asc(), Session.id.asc())
+        .all()
+    )
+
+    session_ids = [session.id for session, _ in sessions]
+    attendance_rows = []
+    if session_ids:
+        attendance_rows = (
+            db.session.query(
+                Attendance.session_id,
+                Attendance.status,
+                func.count(Attendance.id).label("count")
+            )
+            .filter(Attendance.session_id.in_(session_ids))
+            .group_by(Attendance.session_id, Attendance.status)
+            .all()
+        )
+
+    attendance_map = {}
+    for session_id, status, count in attendance_rows:
+        bucket = attendance_map.setdefault(session_id, {"present": 0, "absent": 0, "late": 0, "excused": 0})
+        if status in bucket:
+            bucket[status] = int(count)
+
+    course_map = {}
+    for session, course in sessions:
+        course_item = course_map.setdefault(course.id, {
+            "course_id": course.id,
+            "course_title": course.title,
+            "course_status": course.status,
+            "start_date": course.start_date.isoformat() if course.start_date else None,
+            "end_date": course.end_date.isoformat() if course.end_date else None,
+            "teacher_name": course.teacher.full_name if course.teacher else (course.teacher_name_cached or "-"),
+            "sessions": []
+        })
+        counts = attendance_map.get(session.id, {"present": 0, "absent": 0, "late": 0, "excused": 0})
+        total_marked = counts["present"] + counts["absent"] + counts["late"] + counts["excused"]
+        course_item["sessions"].append({
+            "session_id": session.id,
+            "session_date": session.session_date.isoformat() if session.session_date else None,
+            "start_time": session.start_time.strftime("%H:%M") if session.start_time else None,
+            "end_time": session.end_time.strftime("%H:%M") if session.end_time else None,
+            "lesson_delivered": bool(session.lesson_delivered),
+            "attendance_submitted": total_marked > 0,
+            "attendance_counts": counts,
+            "attendance_total_marked": total_marked
+        })
+
+    courses = list(course_map.values())
+    total_sessions = sum(len(item["sessions"]) for item in courses)
+    totals = {"present": 0, "absent": 0, "late": 0, "excused": 0}
+    delivered_count = 0
+    submitted_count = 0
+    for item in courses:
+        for session in item["sessions"]:
+            if session["lesson_delivered"]:
+                delivered_count += 1
+            if session["attendance_submitted"]:
+                submitted_count += 1
+            totals["present"] += session["attendance_counts"]["present"]
+            totals["absent"] += session["attendance_counts"]["absent"]
+            totals["late"] += session["attendance_counts"]["late"]
+            totals["excused"] += session["attendance_counts"]["excused"]
+
+    total_active_courses = Course.query.filter(Course.status == "active").count()
+    total_active_teachers = (
+        db.session.query(func.count(func.distinct(Course.teacher_id)))
+        .filter(Course.status == "active", Course.teacher_id.isnot(None))
+        .scalar() or 0
+    )
+    total_active_students = (
+        db.session.query(func.count(func.distinct(Enrollment.student_id)))
+        .join(Course, Course.id == Enrollment.course_id)
+        .join(Student, Student.id == Enrollment.student_id)
+        .filter(
+            Enrollment.status == "active",
+            Course.status == "active",
+            Student.is_active.is_(True)
+        )
+        .scalar() or 0
+    )
+    total_active_organizations = (
+        db.session.query(func.count(func.distinct(Course.organization_id)))
+        .filter(Course.status == "active", Course.organization_id.isnot(None))
+        .scalar() or 0
+    )
+
+    payload = {
+        "report_type": "daily_course_sessions",
+        "date": target_date.isoformat(),
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "total_courses_count": total_active_courses,
+        "total_teachers_count": int(total_active_teachers),
+        "total_students_count": int(total_active_students),
+        "total_organizations_count": int(total_active_organizations),
+        "courses_count": len(courses),
+        "sessions_count": total_sessions,
+        "lesson_delivered_count": delivered_count,
+        "attendance_submitted_sessions_count": submitted_count,
+        "attendance_totals": totals,
+        "courses": courses
+    }
+    return jsonify(payload)

@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import func
 import secrets
 import string
-from flask import Blueprint, render_template, redirect, url_for, request, flash, session, current_app, send_file
+from flask import Blueprint, render_template, redirect, url_for, request, flash, session, current_app, send_file, jsonify
 from sqlalchemy.exc import IntegrityError
 from flask_login import login_required, current_user
 from reportlab.lib.pagesizes import A4
@@ -20,7 +20,10 @@ from ...models import (
     PlacementPromptHistory,
     AuditLog,
     Course,
+    Enrollment,
     Teacher,
+    Student,
+    Organization,
     Attendance,
     Message,
     Announcement,
@@ -32,7 +35,8 @@ from ...models import (
     PlacementTestQuestion,
     PlacementAnswer,
     PlacementTest,
-    PlacementCandidate
+    PlacementCandidate,
+    Session
 )
 from ...forms import UserForm
 from ...security import require_roles, hash_api_token
@@ -362,6 +366,139 @@ def api_tokens():
     user_map = {user.id: user for user in users}
     tokens = ApiToken.query.order_by(ApiToken.created_at.desc()).limit(200).all()
     return render_template("admin/api_tokens.html", tokens=tokens, user_map=user_map)
+
+
+@admin_bp.route("/api-tokens/test-bot")
+@login_required
+@require_roles("admin")
+def api_tokens_test_bot():
+    raw_date = (request.args.get("date") or "").strip()
+    if raw_date:
+        try:
+            target_date = datetime.fromisoformat(raw_date).date()
+        except ValueError:
+            return jsonify({"error": "invalid_date", "expected": "YYYY-MM-DD"}), 400
+    else:
+        target_date = datetime.utcnow().date()
+
+    rows = (
+        db.session.query(Session, Course)
+        .join(Course, Course.id == Session.course_id)
+        .filter(Session.session_date == target_date)
+        .filter(Course.status == "active")
+        .order_by(Course.title.asc(), Session.start_time.asc(), Session.id.asc())
+        .all()
+    )
+    session_ids = [session.id for session, _ in rows]
+    attendance_rows = []
+    if session_ids:
+        attendance_rows = (
+            db.session.query(
+                Attendance.session_id,
+                Attendance.status,
+                func.count(Attendance.id).label("count")
+            )
+            .filter(Attendance.session_id.in_(session_ids))
+            .group_by(Attendance.session_id, Attendance.status)
+            .all()
+        )
+
+    attendance_map = {}
+    for session_id, status, count in attendance_rows:
+        bucket = attendance_map.setdefault(session_id, {"present": 0, "absent": 0, "late": 0, "excused": 0})
+        if status in bucket:
+            bucket[status] = int(count)
+
+    course_map = {}
+    for session, course in rows:
+        item = course_map.setdefault(course.id, {
+            "course_id": course.id,
+            "course_title": course.title,
+            "course_status": course.status,
+            "start_date": course.start_date.isoformat() if course.start_date else None,
+            "end_date": course.end_date.isoformat() if course.end_date else None,
+            "teacher_name": course.teacher.full_name if course.teacher else (course.teacher_name_cached or "-"),
+            "sessions": []
+        })
+        counts = attendance_map.get(session.id, {"present": 0, "absent": 0, "late": 0, "excused": 0})
+        total_marked = counts["present"] + counts["absent"] + counts["late"] + counts["excused"]
+        item["sessions"].append({
+            "session_id": session.id,
+            "session_date": session.session_date.isoformat() if session.session_date else None,
+            "start_time": session.start_time.strftime("%H:%M") if session.start_time else None,
+            "end_time": session.end_time.strftime("%H:%M") if session.end_time else None,
+            "lesson_delivered": bool(session.lesson_delivered),
+            "attendance_submitted": total_marked > 0,
+            "attendance_counts": counts,
+            "attendance_total_marked": total_marked
+        })
+
+    courses = list(course_map.values())
+    total_sessions = sum(len(item["sessions"]) for item in courses)
+    totals = {"present": 0, "absent": 0, "late": 0, "excused": 0}
+    delivered_count = 0
+    submitted_count = 0
+    for item in courses:
+        for session in item["sessions"]:
+            if session["lesson_delivered"]:
+                delivered_count += 1
+            if session["attendance_submitted"]:
+                submitted_count += 1
+            totals["present"] += session["attendance_counts"]["present"]
+            totals["absent"] += session["attendance_counts"]["absent"]
+            totals["late"] += session["attendance_counts"]["late"]
+            totals["excused"] += session["attendance_counts"]["excused"]
+
+    total_active_courses = Course.query.filter(Course.status == "active").count()
+    total_active_teachers = (
+        db.session.query(func.count(func.distinct(Course.teacher_id)))
+        .filter(Course.status == "active", Course.teacher_id.isnot(None))
+        .scalar() or 0
+    )
+    total_active_students = (
+        db.session.query(func.count(func.distinct(Enrollment.student_id)))
+        .join(Course, Course.id == Enrollment.course_id)
+        .join(Student, Student.id == Enrollment.student_id)
+        .filter(
+            Enrollment.status == "active",
+            Course.status == "active",
+            Student.is_active.is_(True)
+        )
+        .scalar() or 0
+    )
+    total_active_organizations = (
+        db.session.query(func.count(func.distinct(Course.organization_id)))
+        .filter(Course.status == "active", Course.organization_id.isnot(None))
+        .scalar() or 0
+    )
+
+    return jsonify({
+        "report_type": "daily_course_sessions",
+        "date": target_date.isoformat(),
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "total_courses_count": int(total_active_courses),
+        "total_teachers_count": int(total_active_teachers),
+        "total_students_count": int(total_active_students),
+        "total_organizations_count": int(total_active_organizations),
+        "courses_count": len(courses),
+        "sessions_count": total_sessions,
+        "lesson_delivered_count": delivered_count,
+        "attendance_submitted_sessions_count": submitted_count,
+        "attendance_totals": totals,
+        "courses": courses
+    })
+
+
+@admin_bp.route("/api-tokens/<int:token_id>/test")
+@login_required
+@require_roles("admin")
+def api_token_test(token_id):
+    token = ApiToken.query.get_or_404(token_id)
+    if not token.is_active:
+        return jsonify({"error": "token_inactive"}), 400
+    if not token.user or token.user.role != "admin":
+        return jsonify({"error": "forbidden", "message": "Sadece admin token test edilebilir."}), 403
+    return api_tokens_test_bot()
 
 
 @admin_bp.route("/api-tokens/<int:token_id>/revoke", methods=["POST"])

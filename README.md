@@ -85,62 +85,48 @@ flask seed
 }
 ```
 
-## Planlanan İş: Günlük/Aylık Rapor (n8n + Telegram + Google Drive)
+## n8n Günlük Rapor Akışı (Aktif Kullanım)
 
-Bu iş **şimdilik planlanan** bir geliştirmedir. Uygulama içinde yapılmayacak; n8n akışı ile çalışacaktır.
+Bu akış uygulamada hazır olan endpoint ile çalışır:
+- `GET /api/reports/daily-course-sessions?date=YYYY-MM-DD`
+- Kimlik doğrulama: `Authorization: Bearer <TOKEN>` (admin kullanıcıya ait aktif token)
 
-**Hedef**
-- Ataşeye **günlük** ve **aylık** raporların Telegram üzerinden gönderilmesi
-- Aynı raporların Google Drive’a **JSON dosyası** olarak yedeklenmesi
-- Rapor dosya adları tarihli olacak:
-  - Günlük: `daily-YYYY-MM-DD.json`
-  - Aylık: `monthly-YYYY-MM.json`
+### n8n tarafında sıralı yapılacaklar
+1. `Cron` node: Her gün tetikleme zamanı belirle.
+2. `Set` node: `report_date` üret (`YYYY-MM-DD` formatı).
+3. `HTTP Request` node:
+   - Method: `GET`
+   - URL: `http://localhost:5000/api/reports/daily-course-sessions?date={{$json.report_date}}`
+   - Header: `Authorization: Bearer <TOKEN>`
+4. `IF` node:
+   - Status code `200` ise devam et.
+   - Hata durumunda ayrı hata bildirimi akışına yönlendir.
+5. `Telegram` node (opsiyonel):
+   - Günlük özet metni gönder.
+6. `Google Drive` node (opsiyonel):
+   - Dönen JSON’u dosya olarak sakla (`daily-{{$json.date}}.json`).
 
-**Günlük Rapor İçeriği (öneri)**
-- Üst bilgi: `report_type`, `date`, `generated_at`, `timezone`
-- Özet metrikler:
-  - `courses_active_count`
-  - `courses_started_today`
-  - `sessions_today_count`
-  - `attendance_submitted_today`
-  - `students_new_count`
-  - `pre_registrations_new`
-  - `placement_tests_completed_today`
-  - `certificates_issued_today`
-- Detay listeleri:
-  - `sessions_today`: `session_id`, `course_title`, `date`, `start_time`, `end_time`, `teacher_name`,
-    `attendance_present`, `attendance_absent`, `attendance_late`, `attendance_excused`
-  - `students_new`: `student_id`, `full_name`, `phone`, `email` (IIN/TC **opsiyonel**)
-  - `pre_registrations_new`: `full_name`, `phone`, `email`, `course_level` (IIN/TC **opsiyonel**)
-  - `placement_tests_completed`: `candidate_name`, `score_percent`, `level`, `group_name`, `completed_at`
+### Endpointte dönen ana alanlar
+- Genel aktif toplamlar:
+  - `total_courses_count`
+  - `total_teachers_count`
+  - `total_students_count`
+  - `total_organizations_count`
+- İlgili güne ait özet:
+  - `courses_count`
+  - `sessions_count`
+  - `lesson_delivered_count`
+  - `attendance_submitted_sessions_count`
+  - `attendance_totals` (`present`, `absent`, `late`, `excused`)
+- İlgili güne ait detay:
+  - `courses[]`
+  - `courses[].sessions[]`
+  - `courses[].sessions[].attendance_counts`
 
-**Aylık Rapor İçeriği (öneri)**
-- Üst bilgi: `report_type`, `month`, `generated_at`, `timezone`
-- Özet metrikler:
-  - `courses_active_count`
-  - `courses_started_month`
-  - `courses_completed_month`
-  - `sessions_total_month`
-  - `attendance_present_total`
-  - `attendance_absent_total`
-  - `attendance_rate_avg`
-  - `students_new_month`
-  - `pre_registrations_new_month`
-  - `placement_tests_completed_month`
-  - `certificates_issued_month`
-- Detay listeleri:
-  - `courses_started`: `course_id`, `title`, `start_date`, `end_date`, `teacher_name`, `organization`
-  - `attendance_summary_by_course`: `course_id`, `title`, `present`, `absent`, `late`, `excused`, `attendance_rate`
-  - `placement_summary`: `avg_score`, `level_distribution`, `group_usage`
-
-**Kişisel Veri Notu**
-- IIN/TC bilgisi raporlarda **opsiyonel** tutulmalı.
-- Gerekirse maskeleme (son 4 hane) uygulanabilir.
-
-**Planlanan Akış (n8n)**
-1. Cron (günlük/aylık) → uygulamadan rapor JSON çek
-2. Telegram’a raporu gönder
-3. Google Drive’a aynı JSON dosyasını yükle
+### Not
+- Rapor sadece `active` statüdeki kurs verilerini baz alır.
+- Belirli bir tarihte oturum yoksa `courses: []` ve günlük sayaçlar `0` döner.
+- Admin panelinde `API Tokenlar` ekranındaki satır bazlı `Test` butonu ile aynı JSON ayrı sekmede test edilebilir.
 
 ## Notlar
 - WhatsApp ayarları ENV üzerinden yönetilir.
