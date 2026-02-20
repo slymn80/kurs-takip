@@ -119,8 +119,8 @@
           </td>
           <td>{{ item.candidate }}</td>
           <td>{{ item.iin }}</td>
-          <td>{{ item.started_at }}</td>
-          <td>{{ item.completed_at or '-' }}</td>
+          <td>{{ item.started_at|tr_datetime }}</td>
+          <td>{{ item.completed_at|tr_datetime }}</td>
           <td>{{ item.score_percent or 0 }}%</td>
           <td>{{ item.level or '-' }}</td>
           <td>{{ item.total_questions or 0 }}</td>

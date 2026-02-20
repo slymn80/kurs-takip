@@ -19,7 +19,7 @@
   {% if generation_status.updated_at %}
     <div class="text-xs mt-2">
       Güncelleme:
-      <span data-local-time="{{ generation_status.updated_at }}Z">{{ generation_status.updated_at }}</span>
+      <span data-local-time="{{ generation_status.updated_at }}Z">{{ generation_status.updated_at|tr_datetime }}</span>
     </div>
   {% endif %}
 </div>
@@ -231,7 +231,7 @@
   {% for item in prompt_history %}
     <div class="card p-4 {% if item.is_active %}border border-emerald-200 bg-emerald-50{% endif %}">
       <div class="flex items-center justify-between">
-        <div class="text-xs uppercase tracking-wide text-ink-400">{{ item.created_at }}</div>
+        <div class="text-xs uppercase tracking-wide text-ink-400">{{ item.created_at|tr_datetime }}</div>
         {% if item.is_active %}
           <span class="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full">Aktif Prompt</span>
         {% endif %}

@@ -44,8 +44,8 @@
             <tr>
               <td>{{ c.title }}</td>
               <td>{{ c.status }}</td>
-              <td>{{ c.start_date }}</td>
-              <td>{{ c.end_date }}</td>
+              <td>{{ c.start_date|tr_date }}</td>
+              <td>{{ c.end_date|tr_date }}</td>
             </tr>
           {% else %}
             <tr><td colspan="4" class="text-ink-400">Veri yok.</td></tr>
@@ -141,14 +141,14 @@
               {% if selected_teacher_id %}
                 <td>{{ c.title }}</td>
                 <td>{{ c.status }}</td>
-                <td>{{ c.start_date }}</td>
-                <td>{{ c.end_date }}</td>
+                <td>{{ c.start_date|tr_date }}</td>
+                <td>{{ c.end_date|tr_date }}</td>
               {% else %}
                 <td>{{ c.teacher.full_name if c.teacher else (c.teacher_name_cached or '-') }}</td>
                 <td>{{ c.title }}</td>
                 <td>{{ c.status }}</td>
-                <td>{{ c.start_date }}</td>
-                <td>{{ c.end_date }}</td>
+                <td>{{ c.start_date|tr_date }}</td>
+                <td>{{ c.end_date|tr_date }}</td>
               {% endif %}
             </tr>
           {% else %}

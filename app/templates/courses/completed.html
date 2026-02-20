@@ -17,7 +17,7 @@
         <td>{{ loop.index }}</td>
         <td>{{ item.title }}</td>
         <td>{{ item.teacher.full_name if item.teacher else (item.teacher_name_cached or '-') }}</td>
-        <td>{{ item.start_date }} - {{ item.end_date }}</td>
+        <td>{{ item.start_date|tr_date }} - {{ item.end_date|tr_date }}</td>
         <td>
           {% if item.status == 'ended' %}
             <span class="badge badge-success">Kurs başarıyla sona erdi</span>

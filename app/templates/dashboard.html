@@ -67,7 +67,7 @@
           <td>{{ enrollment.student.full_name }}</td>
           <td>Kursa kayıt</td>
           <td>{{ enrollment.course.title }}</td>
-          <td>{{ enrollment.enrolled_at.date() }}</td>
+          <td>{{ enrollment.enrolled_at|tr_date }}</td>
         </tr>
         {% else %}
         <tr>

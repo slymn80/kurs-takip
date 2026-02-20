@@ -61,7 +61,7 @@
           <tbody>
             {% for t in tests %}
               <tr>
-        <td {% if t.completed_at %}data-local-time="{{ t.completed_at.isoformat() }}Z"{% endif %}>{{ t.completed_at.date() if t.completed_at else '-' }}</td>
+        <td {% if t.completed_at %}data-local-time="{{ t.completed_at.isoformat() }}Z"{% endif %}>{{ t.completed_at|tr_date }}</td>
                 <td>%{{ t.score_percent }}</td>
                 <td>{{ t.level or '-' }}</td>
                 <td><a class="btn-ghost btn-sm" href="{{ url_for('placement.result', test_id=t.id) }}">Detay</a></td>

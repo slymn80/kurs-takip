@@ -51,10 +51,11 @@
     <ul class="text-sm space-y-2">
       <li>Kurum: {{ course.organization.name if course.organization else (course.organization_name_cached or '-') }}</li>
       <li>Öğretmen: {{ course.teacher.full_name if course.teacher else (course.teacher_name_cached or '-') }}</li>
-      <li>Tarih: {{ course.start_date }} - {{ course.end_date }}</li>
+      <li>Tarih: {{ course.start_date|tr_date }} - {{ course.end_date|tr_date }}</li>
       <li>Yer: {{ course.location.name if course.location else (course.location_name_cached or '-') }}</li>
     </ul>
     <a href="{{ url_for('courses.export_attendance', course_id=course.id) }}" class="btn-secondary mt-4">Devamsızlık CSV</a>
+    <a href="{{ url_for('courses.course_students_pdf', course_id=course.id) }}" class="btn-secondary mt-2">Kursiyer Listesi PDF</a>
   </div>
 </div>
 
@@ -69,7 +70,7 @@
         {% for session in sessions %}
         <tr>
           <td>{{ loop.index }}</td>
-          <td>{{ session.session_date }}</td>
+          <td>{{ session.session_date|tr_date }}</td>
           <td>{{ session.start_time }} - {{ session.end_time }}</td>
           <td>
             <form method="post" action="{{ url_for('courses.update_lesson_delivered', session_id=session.id) }}">
@@ -110,7 +111,7 @@
   <div class="flex items-center justify-between mb-4">
     <div>
       <h3 class="font-display text-xl">Değerlendirme</h3>
-      <p class="text-ink-500 text-sm">Son oturum: {{ last_session.session_date }} {{ last_session.start_time }} - {{ last_session.end_time }}</p>
+      <p class="text-ink-500 text-sm">Son oturum: {{ last_session.session_date|tr_date }} {{ last_session.start_time }} - {{ last_session.end_time }}</p>
     </div>
   </div>
   <div class="card p-6">

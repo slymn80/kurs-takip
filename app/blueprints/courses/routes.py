@@ -810,3 +810,69 @@ def export_attendance(course_id):
     )
 
 
+@courses_bp.route("/<int:course_id>/students.pdf")
+@login_required
+@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+def course_students_pdf(course_id):
+    course = _course_query_for_user().filter_by(id=course_id).first_or_404()
+    enrollments = (
+        Enrollment.query
+        .filter_by(course_id=course.id, status="active")
+        .join(Student, Enrollment.student_id == Student.id)
+        .order_by(Student.full_name.asc())
+        .all()
+    )
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    font_name = _pdf_font_name()
+    generated_at = datetime.now().strftime("%d.%m.%Y %H:%M")
+    page_num = 1
+
+    def draw_footer():
+        c.setFont(font_name, 8)
+        c.drawString(40, 20, generated_at)
+        c.drawRightString(width - 40, 20, f"Sayfa {page_num}")
+
+    def draw_header():
+        c.setFont(font_name, 14)
+        c.drawString(40, height - 40, "Kursiyer Listesi")
+        c.setFont(font_name, 10)
+        c.drawString(40, height - 58, f"Kurs: {course.title}")
+        date_range = f"{course.start_date.strftime('%d.%m.%Y')} - {course.end_date.strftime('%d.%m.%Y')}"
+        c.drawString(40, height - 74, f"Tarih: {date_range}")
+        c.drawRightString(width - 40, height - 74, f"Toplam: {len(enrollments)}")
+        y = height - 100
+        c.setFont(font_name, 9)
+        c.drawString(40, y, "No")
+        c.drawString(75, y, "Ad Soyad")
+        c.drawString(280, y, "IIN / T.C.")
+        c.drawString(390, y, "Telefon")
+        c.drawString(500, y, "Durum")
+        return y - 14
+
+    y = draw_header()
+    c.setFont(font_name, 9)
+    for idx, enrollment in enumerate(enrollments, start=1):
+        if y < 60:
+            draw_footer()
+            c.showPage()
+            page_num += 1
+            y = draw_header()
+            c.setFont(font_name, 9)
+        student = enrollment.student
+        c.drawString(40, y, str(idx))
+        c.drawString(75, y, (student.full_name or "-")[:34])
+        c.drawString(280, y, (student.iin or "-")[:14])
+        c.drawString(390, y, (student.phone or "-")[:16])
+        c.drawString(500, y, (enrollment.status or "-")[:12])
+        y -= 14
+
+    draw_footer()
+    c.save()
+    buffer.seek(0)
+    filename = f"course_students_{course.id}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype="application/pdf")
+
+

@@ -1,6 +1,6 @@
 ﻿import io
 import os
-from datetime import datetime
+from datetime import date, datetime
 from flask import Blueprint, render_template, send_file, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from reportlab.lib.pagesizes import A4, landscape
@@ -9,7 +9,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from openpyxl import Workbook
 from sqlalchemy import or_
-from ...models import Course, Enrollment, Student, Teacher, Organization, Certificate, AuditLog, CourseLedgerEntry, CourseExamResult
+from ...models import Course, Enrollment, Student, Teacher, Organization, Certificate, AuditLog, CourseLedgerEntry, CourseExamResult, User
 from ...extensions import db
 from ...utils import serialize_json
 from ...security import require_roles
@@ -31,6 +31,21 @@ def _font_name():
             except Exception:
                 continue
     return "Helvetica"
+
+
+def _fmt_date(value):
+    if value in (None, ""):
+        return "-"
+    if isinstance(value, datetime):
+        return value.strftime("%d.%m.%Y")
+    if isinstance(value, date):
+        return value.strftime("%d.%m.%Y")
+    return str(value)
+
+
+def _attache_name():
+    attache = User.query.filter_by(role="attache", is_active=True).order_by(User.id.asc()).first()
+    return attache.full_name if attache and attache.full_name else ""
 
 
 def _build_report(report_type, filters=None):
@@ -55,9 +70,9 @@ def _build_report(report_type, filters=None):
         if status:
             query = query.filter(Course.status == status)
         rows = []
-        for c in query.order_by(Course.created_at.desc()).all():
-            rows.append([c.id, c.title, c.status, str(c.start_date), str(c.end_date), c.teacher.full_name if c.teacher else "-"])
-        return "Kurs Listesi", ["ID", "Kurs", "Durum", "Başlangıç", "Bitiş", "Öğretmen"], rows
+        for idx, c in enumerate(query.order_by(Course.created_at.desc()).all(), start=1):
+            rows.append([idx, c.id, c.title, c.status, _fmt_date(c.start_date), _fmt_date(c.end_date), c.teacher.full_name if c.teacher else "-"])
+        return "Kurs Listesi", ["Sıra No", "ID", "Kurs", "Durum", "Başlangıç", "Bitiş", "Öğretmen"], rows
 
     if report_type == "course_students":
         course_id = filters.get("course_id")
@@ -104,7 +119,7 @@ def _build_report(report_type, filters=None):
             query = query.filter(Course.teacher_id == teacher_id)
         rows = []
         for c in query.order_by(Course.created_at.desc()).all():
-            rows.append([c.id, c.title, str(c.start_date), str(c.end_date), c.teacher.full_name if c.teacher else "-"])
+            rows.append([c.id, c.title, _fmt_date(c.start_date), _fmt_date(c.end_date), c.teacher.full_name if c.teacher else "-"])
         return "Biten Kurslar", ["ID", "Kurs", "Başlangıç", "Bitiş", "Öğretmen"], rows
 
     if report_type == "dropped_courses":
@@ -116,7 +131,7 @@ def _build_report(report_type, filters=None):
             query = query.filter(Course.teacher_id == teacher_id)
         rows = []
         for c in query.order_by(Course.created_at.desc()).all():
-            rows.append([c.id, c.title, str(c.start_date), str(c.end_date), c.teacher.full_name if c.teacher else "-"])
+            rows.append([c.id, c.title, _fmt_date(c.start_date), _fmt_date(c.end_date), c.teacher.full_name if c.teacher else "-"])
         return "Yarım Kalan Kurslar", ["ID", "Kurs", "Başlangıç", "Bitiş", "Öğretmen"], rows
 
     if report_type == "teacher_courses":
@@ -126,14 +141,14 @@ def _build_report(report_type, filters=None):
             if current_user.role == "teacher" and teacher_id_self and teacher_id != teacher_id_self:
                 return None, None, None
             for c in Course.query.filter(Course.teacher_id == teacher_id).order_by(Course.created_at.desc()).all():
-                rows.append([c.title, c.status, str(c.start_date), str(c.end_date)])
+                rows.append([c.title, c.status, _fmt_date(c.start_date), _fmt_date(c.end_date)])
             return "Öğretmene Atanan Kurslar", ["Kurs", "Durum", "Başlangıç", "Bitiş"], rows
 
         query = Course.query
         if restrict_course_ids is not None:
             query = query.filter(Course.id.in_(restrict_course_ids))
         for c in query.order_by(Course.created_at.desc()).all():
-            rows.append([c.teacher.full_name if c.teacher else "-", c.title, c.status, str(c.start_date), str(c.end_date)])
+            rows.append([c.teacher.full_name if c.teacher else "-", c.title, c.status, _fmt_date(c.start_date), _fmt_date(c.end_date)])
         return "Tüm Öğretmenlerin Kursları", ["Öğretmen", "Kurs", "Durum", "Başlangıç", "Bitiş"], rows
 
     return None, None, None
@@ -166,6 +181,9 @@ def _pdf_report(title, headers, rows, meta_lines=None):
         c.line(width - 200, sig_y, width - 60, sig_y)
         c.drawString(60, sig_y - 12, "Öğretmen")
         right_center = width - 130
+        right_name = _attache_name()
+        if right_name:
+            c.drawCentredString(right_center, sig_y + 10, right_name)
         c.drawCentredString(right_center, sig_y - 12, "Eğitim Ataşesi")
 
     c.setFont(font_name, 14)
@@ -230,6 +248,7 @@ def _xlsx_report(headers, rows):
 
     ws.append([])
     ws.append(["Öğretmen"])
+    ws.append(["", "", "", _attache_name()])
     ws.append(["", "", "", "Eğitim Ataşesi"])
 
     from openpyxl.styles import Alignment
@@ -288,6 +307,9 @@ def _certificate_pdf(certificate):
     c.line(80, 110, 260, 110)
     c.line(width - 260, 110, width - 80, 110)
     c.drawString(120, 95, "Eğitmen")
+    right_name = _attache_name()
+    if right_name:
+        c.drawRightString(width - 120, 112, right_name)
     c.drawRightString(width - 120, 95, "Eğitim Ataşesi")
 
     c.showPage()
@@ -696,3 +718,4 @@ def course_ledger_pdf():
     stream = _pdf_report(title, headers, body, meta_lines=meta_lines)
     filename = f"course_ledger_{academic_year or 'all'}.pdf"
     return send_file(stream, as_attachment=True, download_name=filename, mimetype="application/pdf")
+

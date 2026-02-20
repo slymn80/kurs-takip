@@ -6,6 +6,7 @@
     <p class="text-ink-500">Aktif kurslar</p>
   </div>
   <div class="flex items-center gap-3">
+    <a href="{{ url_for('reports.download', report_type='courses', format='pdf', course_status='active') }}" class="btn-secondary"><span class="btn-icon">📋</span>Mevcut Kurslar</a>
     <a href="{{ url_for('courses.cancelled_courses') }}" class="btn-secondary"><span class="btn-icon">⛔</span>İptal Edilen Kurslar</a>
     <a href="{{ url_for('courses.completed_courses') }}" class="btn-secondary"><span class="btn-icon">✅</span>Biten Kurslar</a>
     {% if current_user.role in ['coordinator','principal','attache','admin'] %}
@@ -23,7 +24,7 @@
         <td>{{ loop.index }}</td>
         <td>{{ item.title }}</td>
         <td>{{ item.teacher.full_name if item.teacher else (item.teacher_name_cached or '-') }}</td>
-        <td>{{ item.start_date }} - {{ item.end_date }}</td>
+        <td>{{ item.start_date|tr_date }} - {{ item.end_date|tr_date }}</td>
         <td><span class="badge badge-success">{{ item.status }}</span></td>
         <td class="text-right">
           <div class="flex flex-col items-end gap-2">

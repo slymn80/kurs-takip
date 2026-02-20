@@ -36,19 +36,21 @@ const setupToast = () => {
 };
 
 const setupLocalTimes = () => {
-  const formatter = new Intl.DateTimeFormat(undefined, {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  const pad = (value) => String(value).padStart(2, '0');
+  const format = (date) => {
+    const day = pad(date.getDate());
+    const month = pad(date.getMonth() + 1);
+    const year = date.getFullYear();
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    return `${day}.${month}.${year} ${hours}:${minutes}`;
+  };
   document.querySelectorAll('[data-local-time]').forEach((el) => {
     const value = el.getAttribute('data-local-time');
     if (!value) return;
     const date = new Date(value);
     if (isNaN(date.getTime())) return;
-    el.textContent = formatter.format(date);
+    el.textContent = format(date);
   });
 };
 

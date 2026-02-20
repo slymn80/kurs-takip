@@ -35,8 +35,8 @@
           <td>{{ user_map.get(token.user_id).username if user_map.get(token.user_id) else token.user_id }}</td>
           <td>{{ token.name }}</td>
           <td>{{ 'Aktif' if token.is_active else 'Pasif' }}</td>
-          <td>{{ token.created_at.date() if token.created_at else '-' }}</td>
-          <td>{{ token.last_used_at.date() if token.last_used_at else '-' }}</td>
+          <td>{{ token.created_at|tr_date }}</td>
+          <td>{{ token.last_used_at|tr_date }}</td>
           <td class="text-right">
             {% if token.is_active %}
             <form method="post" action="{{ url_for('admin.revoke_api_token', token_id=token.id) }}" class="inline" onsubmit="return confirm('Token iptal edilsin mi?')">

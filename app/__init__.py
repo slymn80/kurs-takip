@@ -1,6 +1,7 @@
 ﻿from dotenv import load_dotenv
 load_dotenv()
 
+from datetime import date, datetime
 from flask import Flask, request, flash, redirect, url_for, jsonify
 from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import Forbidden
@@ -86,4 +87,42 @@ def create_app(config_class=Config):
         flash("Bu işlem için yetkiniz yok.", "error")
         return redirect(request.referrer or url_for("dashboard.index"))
 
+    def _parse_date_like(value):
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, date):
+            return datetime.combine(value, datetime.min.time())
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return None
+            try:
+                if raw.endswith("Z"):
+                    raw = f"{raw[:-1]}+00:00"
+                return datetime.fromisoformat(raw)
+            except ValueError:
+                try:
+                    parsed_date = date.fromisoformat(raw)
+                    return datetime.combine(parsed_date, datetime.min.time())
+                except ValueError:
+                    return None
+        return None
+
+    @app.template_filter("tr_date")
+    def tr_date(value):
+        if value in (None, ""):
+            return "-"
+        parsed = _parse_date_like(value)
+        if parsed:
+            return parsed.strftime("%d.%m.%Y")
+        return value
+
+    @app.template_filter("tr_datetime")
+    def tr_datetime(value):
+        if value in (None, ""):
+            return "-"
+        parsed = _parse_date_like(value)
+        if parsed:
+            return parsed.strftime("%d.%m.%Y %H:%M")
+        return value
     return app
