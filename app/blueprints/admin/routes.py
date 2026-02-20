@@ -317,7 +317,7 @@ def toggle_user_active(user_id):
 
 @admin_bp.route("/settings", methods=["GET", "POST"])
 @login_required
-@require_roles("admin", "coordinator")
+@require_roles("admin")
 def settings():
     if request.method == "POST":
         for key in ["whatsapp_provider", "n8n_webhook_url", "absence_threshold_ratio"]:
@@ -389,7 +389,7 @@ def audit_logs():
 
 @admin_bp.route("/api-tokens", methods=["GET", "POST"])
 @login_required
-@require_roles("admin", "coordinator")
+@require_roles("admin")
 def api_tokens():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
@@ -428,7 +428,7 @@ def api_tokens():
 
 @admin_bp.route("/api-tokens/test-bot")
 @login_required
-@require_roles("admin", "coordinator")
+@require_roles("admin")
 def api_tokens_test_bot():
     raw_date = (request.args.get("date") or "").strip()
     if raw_date:
@@ -566,7 +566,7 @@ def api_tokens_test_bot():
 
 @admin_bp.route("/api-tokens/<int:token_id>/test")
 @login_required
-@require_roles("admin", "coordinator")
+@require_roles("admin")
 def api_token_test(token_id):
     token = ApiToken.query.get_or_404(token_id)
     if not token.is_active:
@@ -578,7 +578,7 @@ def api_token_test(token_id):
 
 @admin_bp.route("/api-tokens/<int:token_id>/revoke", methods=["POST"])
 @login_required
-@require_roles("admin", "coordinator")
+@require_roles("admin")
 def revoke_api_token(token_id):
     token = ApiToken.query.get_or_404(token_id)
     token.is_active = False
@@ -595,7 +595,7 @@ def revoke_api_token(token_id):
 
 @admin_bp.route("/api-tokens/clear-temp", methods=["POST"])
 @login_required
-@require_roles("admin", "coordinator")
+@require_roles("admin")
 def clear_api_token():
     session.pop("last_api_token", None)
     session.pop("last_api_token_user", None)
@@ -604,7 +604,7 @@ def clear_api_token():
 
 @admin_bp.route("/webhooks/n8n/test", methods=["POST"])
 @login_required
-@require_roles("admin", "coordinator")
+@require_roles("admin")
 def n8n_test():
     payload = {
         "event_type": "test",
