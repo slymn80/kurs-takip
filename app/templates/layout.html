@@ -26,6 +26,9 @@
   {% else %}
     {% block auth %}{% endblock %}
   {% endif %}
+  <footer class="px-4 pb-4 text-center text-xs text-ink-500">
+    Bu otomasyon Süleyman Tongut tarafından geliştirilmiştir.
+  </footer>
   {% include 'partials/assistant_widget.html' %}
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
