@@ -3,6 +3,12 @@
     <button class="lg:hidden" data-toggle-sidebar>
       <span class="text-ink-500">Menü</span>
     </button>
+    <img
+      src="{{ url_for('static', filename='branding/ataselik-logo.jpeg') }}"
+      alt="Almatı Eğitim Ataşeliği Logosu"
+      class="object-contain"
+      style="width: 56px; height: 56px;"
+    >
     <div>
       <p class="text-xs text-ink-400">Hoş geldin</p>
       <p class="font-semibold">{{ current_user.full_name }}</p>
