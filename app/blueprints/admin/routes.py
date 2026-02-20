@@ -48,6 +48,25 @@ from ...services.placement import create_question_group
 admin_bp = Blueprint("admin", __name__)
 generation_status = None
 
+DEFAULT_LOGIN_ASSISTANT_PROMPT = (
+    "Sen Almatı Eğitim Ataşeliği Kurs Takip Otomasyonu için YZ 7/24 asistansın.\n"
+    "Sadece aşağıdaki tek bilgi kaynağına dayanarak cevap ver. Bilgi uydurma.\n"
+    "Desteklenen diller: tr, kz, ru, en. Seçilen dilde yanıt ver.\n"
+    "Kapsam: Türkçe kurslar, ön kayıt, seviye sınavı, kurs süreçleri, iletişim ve genel yönlendirme.\n"
+    "Kişisel veri güvenliği: telefon, e-posta, T.C./IIN gibi hassas bilgileri paylaşma.\n"
+    "Bilgi kaynağında olmayan bir konuda net şekilde 'Bu konuda güncel/ek bilgi yok' de.\n\n"
+    "Yeni açılan/açılacak kurslar (kaynak: turkce_kurs_listesi.xlsx):\n"
+    "- TR-A1-101 | Talgar Dil Akademisi | Günlük Türkçe Başlangıç | A1 | Pazartesi-Çarşamba | 18:30–20:00 | 10 Mart 2026 | 48 Saat | Elif Kaya | Yüz Yüze\n"
+    "- TR-A2-204 | Astana Language Hub | Konuşma Odaklı Türkçe | A2 | Salı-Perşembe | 19:00–20:30 | 12 Mart 2026 | 60 Saat | Mehmet Arslan | Online\n"
+    "- TR-B1-315 | Orta Asya Eğitim Merkezi | Akademik Türkçe | B1 | Cumartesi | 10:00–13:00 | 15 Mart 2026 | 36 Saat | Aigerim N. | Hibrit\n"
+    "- TR-B2-402 | Global Edu Center | İş Türkçesi | B2 | Pazartesi | 20:00–22:00 | 17 Mart 2026 | 40 Saat | Serkan Demir | Online\n"
+    "- TR-C1-550 | Türkçe Kültür Enstitüsü | İleri Seviye Tartışma | C1 | Pazar | 11:00–14:00 | 22 Mart 2026 | 30 Saat | Zeynep Yılmaz | Yüz Yüze\n"
+    "- TR-A1-118 | Steppe Language School | Hızlandırılmış Türkçe | A1 | Pazartesi-Salı-Çarşamba | 09:00–11:00 | 25 Mart 2026 | 72 Saat | Daniyar K. | Yüz Yüze\n"
+    "- TR-B1-377 | Nova Education | Üniversite Hazırlık Türkçesi | B1 | Cuma | 18:00–21:00 | 28 Mart 2026 | 45 Saat | Nazlı Çetin | Online\n"
+    "- TR-A2-290 | SilkRoad Language Center | Günlük Diyalog Atölyesi | A2 | Çarşamba-Cuma | 17:30–19:00 | 30 Mart 2026 | 32 Saat | Murat Akın | Hibrit\n"
+    "- TR-C1-600 | Eurasia Academy | Akademik Yazım Türkçesi | C1 | Cumartesi-Pazar | 14:00–16:00 | 5 Nisan 2026 | 50 Saat | Prof. Deniz Ö. | Online\n"
+)
+
 def _pdf_font_name():
     candidates = [
         ("Arial", r"C:\Windows\Fonts\arial.ttf"),
@@ -316,6 +335,45 @@ def settings():
 
     settings = {s.key: s.value for s in SystemSetting.query.all()}
     return render_template("admin/settings.html", settings=settings)
+
+
+@admin_bp.route("/assistant", methods=["GET", "POST"])
+@login_required
+@require_roles("admin")
+def assistant_settings():
+    if request.method == "POST":
+        action = (request.form.get("action") or "").strip()
+        changed = {"assistant_prompt_length": None}
+
+        if action == "save_prompt":
+            prompt_text = (request.form.get("assistant_prompt") or "").strip() or DEFAULT_LOGIN_ASSISTANT_PROMPT
+            prompt_setting = SystemSetting.query.filter_by(key="login_assistant_prompt").first()
+            if not prompt_setting:
+                prompt_setting = SystemSetting(key="login_assistant_prompt", value=prompt_text)
+                db.session.add(prompt_setting)
+            else:
+                prompt_setting.value = prompt_text
+            changed["assistant_prompt_length"] = len(prompt_text)
+            flash("Sistem promptu kaydedildi.", "success")
+        else:
+            flash("Geçersiz işlem.", "error")
+            return redirect(url_for("admin.assistant_settings"))
+
+        db.session.add(AuditLog(
+            actor_user_id=current_user.id,
+            action="update",
+            entity_type="assistant_settings",
+            entity_id=0,
+            after_json=serialize_json(changed)
+        ))
+        db.session.commit()
+        return redirect(url_for("admin.assistant_settings"))
+
+    prompt_setting = SystemSetting.query.filter_by(key="login_assistant_prompt").first()
+    return render_template(
+        "admin/assistant.html",
+        assistant_prompt=(prompt_setting.value if prompt_setting else DEFAULT_LOGIN_ASSISTANT_PROMPT)
+    )
 
 
 @admin_bp.route("/audit-logs")
@@ -1251,5 +1309,6 @@ def deactivate_placement_question(question_id):
     db.session.commit()
     flash("Soru pasif yapıldı.", "success")
     return redirect(url_for("admin.placement_management", **request.args))
+
 
 
