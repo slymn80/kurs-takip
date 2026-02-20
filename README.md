@@ -135,6 +135,37 @@ Bu akış uygulamada hazır olan endpoint ile çalışır:
   - Otomatik geçen ay: `GET /api/reports/monthly-course-sessions`
   - Belirli ay: `GET /api/reports/monthly-course-sessions?month=2026-02`
 
+## YZ Asistan (Login + Uygulama İçi)
+
+### Teknik yaklaşım
+- Bu mimari teknik olarak **guardrailed / policy-enforced prompting** yaklaşımıdır.
+- Kritik kurallar kodda sabit tutulur, içerik ise admin panelindeki prompt alanından yönetilir.
+
+### Uygulanan yapı
+- Asistan widget'ı login ekranında ve uygulama içinde görünür (sağ alt köşe).
+- Dil seçimi: `TR`, `KZ`, `RU`, `EN` (sadece bu 4 dil desteklenir).
+- Dil değişiminde sohbet geçmişi korunur.
+- Asistan adı: **YZ 7/24 Asistan**.
+
+### Prompt yönetimi
+- Admin menüsü: `Admin > Asistan`.
+- Tek kaynaklı yapı kullanılır:
+  - **Sistem Promptu (Tek Kaynak)** alanı düzenlenir ve kaydedilir.
+  - Asistan yanıtları bu tek prompt alanına göre üretilir.
+- Dosya yükleme alanı kaldırılmıştır.
+
+### İçerik ve güvenlik kuralları
+- Asistan Türkçe kurslar, ön kayıt, seviye sınavı ve genel yönlendirme kapsamında yanıt verir.
+- Kişisel veriler (telefon, e-posta, T.C./IIN vb.) paylaşılmaz.
+- Yanıt formatı okunabilir olacak şekilde zorlanır:
+  - Kısa başlık + madde/numaralı liste
+  - Kurs listelerinde düzenli alan sırası
+  - Ciddi ton + sınırlı/anlamlı emoji kullanımı
+
+### Öntanımlı prompt içeriği
+- `turkce_kurs_listesi.xlsx` dosyasındaki yeni açılacak kurslar prompta gömülmüştür.
+- İstenirse bu liste admin panelindeki tek prompt alanından güncellenir.
+
 ## Notlar
 - WhatsApp ayarları ENV üzerinden yönetilir.
 - `absence_threshold_ratio` sistem ayarı ile devamsızlık eşiği belirlenir (varsayılan 0.2).

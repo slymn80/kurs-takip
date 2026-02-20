@@ -317,7 +317,7 @@ def toggle_user_active(user_id):
 
 @admin_bp.route("/settings", methods=["GET", "POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def settings():
     if request.method == "POST":
         for key in ["whatsapp_provider", "n8n_webhook_url", "absence_threshold_ratio"]:
@@ -339,7 +339,7 @@ def settings():
 
 @admin_bp.route("/assistant", methods=["GET", "POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def assistant_settings():
     if request.method == "POST":
         action = (request.form.get("action") or "").strip()
@@ -378,7 +378,7 @@ def assistant_settings():
 
 @admin_bp.route("/audit-logs")
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def audit_logs():
     logs = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(100).all()
     user_ids = {log.actor_user_id for log in logs if log.actor_user_id}
@@ -389,7 +389,7 @@ def audit_logs():
 
 @admin_bp.route("/api-tokens", methods=["GET", "POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def api_tokens():
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
@@ -428,7 +428,7 @@ def api_tokens():
 
 @admin_bp.route("/api-tokens/test-bot")
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def api_tokens_test_bot():
     raw_date = (request.args.get("date") or "").strip()
     if raw_date:
@@ -566,7 +566,7 @@ def api_tokens_test_bot():
 
 @admin_bp.route("/api-tokens/<int:token_id>/test")
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def api_token_test(token_id):
     token = ApiToken.query.get_or_404(token_id)
     if not token.is_active:
@@ -578,7 +578,7 @@ def api_token_test(token_id):
 
 @admin_bp.route("/api-tokens/<int:token_id>/revoke", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def revoke_api_token(token_id):
     token = ApiToken.query.get_or_404(token_id)
     token.is_active = False
@@ -595,7 +595,7 @@ def revoke_api_token(token_id):
 
 @admin_bp.route("/api-tokens/clear-temp", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def clear_api_token():
     session.pop("last_api_token", None)
     session.pop("last_api_token_user", None)
@@ -604,7 +604,7 @@ def clear_api_token():
 
 @admin_bp.route("/webhooks/n8n/test", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def n8n_test():
     payload = {
         "event_type": "test",
@@ -672,14 +672,14 @@ def year_rollover():
 
 @admin_bp.route("/placement-questions")
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def placement_questions():
     return redirect(url_for("admin.placement_management", **request.args))
 
 
 @admin_bp.route("/placement-management", methods=["GET", "POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def placement_management():
     generation_status = None
     group_filter = (request.args.get("group") or "").strip()
@@ -796,7 +796,7 @@ def placement_management():
 
 @admin_bp.route("/placement-prompt/<int:history_id>/use", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def placement_prompt_use(history_id):
     item = PlacementPromptHistory.query.get_or_404(history_id)
     setting = SystemSetting.query.filter_by(key="placement_prompt_override").first()
@@ -817,7 +817,7 @@ def placement_prompt_use(history_id):
 
 @admin_bp.route("/placement-prompt/<int:history_id>/delete", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def placement_prompt_delete(history_id):
     item = PlacementPromptHistory.query.get_or_404(history_id)
     db.session.delete(item)
@@ -834,7 +834,7 @@ def placement_prompt_delete(history_id):
 
 @admin_bp.route("/placement-prompt/delete-all", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def placement_prompt_delete_all():
     password = request.form.get("password", "")
     confirm = request.form.get("confirm", "")
@@ -861,7 +861,7 @@ def placement_prompt_delete_all():
 
 @admin_bp.route("/placement-management/refresh", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def placement_refresh_pool_admin():
     try:
         count = int(request.form.get("count") or 30)
@@ -885,7 +885,7 @@ def placement_refresh_pool_admin():
 
 @admin_bp.route("/placement-management/<int:question_id>/delete", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def delete_placement_question(question_id):
     used_in_tests = PlacementTestQuestion.query.filter_by(question_id=question_id).first()
     used_in_answers = PlacementAnswer.query.filter_by(question_id=question_id).first()
@@ -909,7 +909,7 @@ def delete_placement_question(question_id):
 
 @admin_bp.route("/placement-management/delete-many", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def delete_many_placement_questions():
     ids = request.form.getlist("question_ids")
     password = request.form.get("password", "")
@@ -1103,7 +1103,7 @@ def update_pre_registration_status(prereg_id):
 
 @admin_bp.route("/placement-results")
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def placement_results():
     search = (request.args.get("q") or "").strip()
     group_filter = (request.args.get("group") or "").strip()
@@ -1199,7 +1199,7 @@ def placement_results():
 
 @admin_bp.route("/placement-results/<int:test_id>/delete", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def delete_placement_result(test_id):
     test = PlacementTest.query.get_or_404(test_id)
     candidate_id = test.candidate_id
@@ -1220,7 +1220,7 @@ def delete_placement_result(test_id):
 
 @admin_bp.route("/placement-results/delete-many", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def delete_many_placement_results():
     ids = request.form.getlist("test_ids")
     password = request.form.get("password", "")
@@ -1262,7 +1262,7 @@ def delete_many_placement_results():
 
 @admin_bp.route("/placement-questions/<int:question_id>/approve", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def approve_placement_question(question_id):
     item = PlacementQuestion.query.get_or_404(question_id)
     item.is_active = True
@@ -1285,7 +1285,7 @@ def approve_placement_question(question_id):
 
 @admin_bp.route("/placement-questions/<int:question_id>/reject", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def reject_placement_question(question_id):
     flash("Reddetme kapalıdır. Soru silme veya pasif yapma kullanın.", "error")
     return redirect(url_for("admin.placement_management"))
@@ -1293,7 +1293,7 @@ def reject_placement_question(question_id):
 
 @admin_bp.route("/placement-questions/<int:question_id>/deactivate", methods=["POST"])
 @login_required
-@require_roles("admin")
+@require_roles("admin", "coordinator")
 def deactivate_placement_question(question_id):
     item = PlacementQuestion.query.get_or_404(question_id)
     item.is_active = False

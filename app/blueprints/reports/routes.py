@@ -560,7 +560,7 @@ def certificate_pdf(certificate_id):
 
 @reports_bp.route("/course-ledger")
 @login_required
-@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+@require_roles("coordinator", "principal", "attache", "admin")
 def course_ledger():
     course_id = request.args.get("course_id", type=int)
     academic_year = request.args.get("academic_year", "").strip()
@@ -603,7 +603,7 @@ def course_ledger():
 
 @reports_bp.route("/course-ledger/generate", methods=["POST"])
 @login_required
-@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+@require_roles("coordinator", "principal", "attache", "admin")
 def generate_course_ledger():
     course_id = request.form.get("course_id", type=int)
     if not course_id:
@@ -658,7 +658,7 @@ def generate_course_ledger():
 
 @reports_bp.route("/course-ledger/<int:entry_id>/update", methods=["POST"])
 @login_required
-@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+@require_roles("coordinator", "principal", "attache", "admin")
 def update_course_ledger(entry_id):
     entry = CourseLedgerEntry.query.get_or_404(entry_id)
     entry.result = (request.form.get("result") or entry.result).strip()
@@ -680,7 +680,7 @@ def update_course_ledger(entry_id):
 
 @reports_bp.route("/course-ledger/pdf")
 @login_required
-@require_roles("teacher", "coordinator", "principal", "attache", "admin")
+@require_roles("coordinator", "principal", "attache", "admin")
 def course_ledger_pdf():
     course_id = request.args.get("course_id", type=int)
     academic_year = request.args.get("academic_year", "").strip()

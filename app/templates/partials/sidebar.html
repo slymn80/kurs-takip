@@ -20,7 +20,6 @@
       {% if current_user.role != 'teacher' %}
         <a href="{{ url_for('reports.certificates') }}" class="nav-link {% if current == 'reports.certificates' %}nav-link-active{% endif %}">Sertifikalar</a>
       {% endif %}
-      <a href="{{ url_for('reports.course_ledger') }}" class="nav-link {% if current == 'reports.course_ledger' %}nav-link-active{% endif %}">Kurs Defteri</a>
       <a href="{{ url_for('announcements.index') }}" class="nav-link {% if current and current.startswith('announcements.') %}nav-link-active{% endif %}">Ataşelik Duyuruları</a>
     {% endif %}
     {% if current_user.role in ['coordinator','principal','attache','admin'] %}
@@ -51,6 +50,15 @@
       <a href="{{ url_for('admin.assistant_settings') }}" class="nav-link {% if current == 'admin.assistant_settings' %}nav-link-active{% endif %}">Asistan</a>
       <a href="{{ url_for('admin.settings') }}" class="nav-link {% if current == 'admin.settings' %}nav-link-active{% endif %}">Ayarlar</a>
       <a href="{{ url_for('admin.year_rollover') }}" class="nav-link {% if current == 'admin.year_rollover' %}nav-link-active{% endif %}">Akademik Yıl Geçisi</a>
+      <a href="{{ url_for('admin.audit_logs') }}" class="nav-link {% if current == 'admin.audit_logs' %}nav-link-active{% endif %}">Denetim Logları</a>
+    {% endif %}
+    {% if current_user.role == 'coordinator' %}
+      <div class="nav-section-title">Yönetim</div>
+      <a href="{{ url_for('admin.placement_management') }}" class="nav-link {% if current == 'admin.placement_management' %}nav-link-active{% endif %}">Seviye Sınavı Yönetimi</a>
+      <a href="{{ url_for('admin.placement_results') }}" class="nav-link {% if current == 'admin.placement_results' %}nav-link-active{% endif %}">Seviye Sınavı Sonuçları</a>
+      <a href="{{ url_for('admin.api_tokens') }}" class="nav-link {% if current == 'admin.api_tokens' %}nav-link-active{% endif %}">API Tokenlar</a>
+      <a href="{{ url_for('admin.assistant_settings') }}" class="nav-link {% if current == 'admin.assistant_settings' %}nav-link-active{% endif %}">Asistan</a>
+      <a href="{{ url_for('admin.settings') }}" class="nav-link {% if current == 'admin.settings' %}nav-link-active{% endif %}">Ayarlar</a>
       <a href="{{ url_for('admin.audit_logs') }}" class="nav-link {% if current == 'admin.audit_logs' %}nav-link-active{% endif %}">Denetim Logları</a>
     {% endif %}
     <div class="pt-4 border-t border-ink-100"></div>

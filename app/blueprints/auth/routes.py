@@ -182,6 +182,19 @@ def _knowledge_answer_from_markdown(question, knowledge_md, lang):
     return title + "\n" + "\n".join(f"- {ln}" for ln in top_lines)
 
 
+def _prettify_assistant_reply(reply):
+    if not reply:
+        return reply
+    text = reply.strip()
+    # Ensure numbered items and key field emojis start on new lines.
+    text = re.sub(r"\s(?=\d+\.)", "\n", text)
+    text = re.sub(r"\s(?=[🆔🏫🎯🕒📅⏱💻🏛🔁📌])", "\n", text)
+    text = re.sub(r"\s-\s(?=[🆔🏫🎯🕒📅⏱💻🏛🔁])", "\n", text)
+    # Normalize repeated blank lines.
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def _is_public_course_catalog_question(text):
     lowered = (text or "").strip().lower()
     if not lowered:
@@ -384,6 +397,14 @@ def login_assistant_chat():
         "- Yalnızca şu diller desteklenir: tr, kz, ru, en. Bunun dışındaki dil taleplerini nazikçe reddet.\n"
         "Sadece aşağıdaki TEK PROMPT KAYNAĞINA dayanarak cevap ver.\n"
         "Prompt dışında ek veri kaynağı kullanma.\n\n"
+        "Yanıt formatı zorunludur:\n"
+        "- Yanıtları okunabilir biçimde ver: kısa bir başlık + madde işaretleri kullan.\n"
+        "- Kurs listesi sorularında numaralı liste kullan.\n"
+        "- Liste başladığında yarım bırakma; tüm ilgili maddeleri tamamla.\n"
+        "- Kurs satırlarında mümkünse şu sırayı koru: Kurs Kodu, Kurum, Kurs Adı, Seviye, Günler, Saat, Başlangıç, Süre, Format.\n"
+        "- Ciddi ve profesyonel bir ton kullan; emoji kullanımı sınırlı olsun.\n"
+        "- Yalnızca anlamlı alan başlıklarında emoji kullan: 📌 başlık, 🆔 kurs kodu, 🏫 kurum, 🎯 seviye, 🕒 gün/saat, 📅 başlangıç, ⏱ süre, 💻/🏛/🔁 format.\n"
+        "- Uzun tek paragraf yazma; karışık metin üretme.\n\n"
         "Tek Prompt Kaynağı:\n"
         f"{base_prompt}"
     )
@@ -410,10 +431,10 @@ def login_assistant_chat():
             json={
                 "model": model,
                 "temperature": 0.2,
-                "max_tokens": 400,
+                "max_tokens": 1000,
                 "messages": messages,
             },
-            timeout=25
+            timeout=120
         )
         if response.status_code >= 400:
             return jsonify({"error": "assistant_upstream_error"}), 502
@@ -426,6 +447,11 @@ def login_assistant_chat():
         )
         if not reply:
             return jsonify({"error": "empty_reply"}), 502
+        if ("\n- " not in reply and "\n1." not in reply and "•" not in reply and len(reply) > 160):
+            parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+", reply) if p.strip()]
+            if len(parts) >= 2:
+                reply = "\n".join(f"- {p}" for p in parts)
+        reply = _prettify_assistant_reply(reply)
         return jsonify({"reply": reply})
     except requests.RequestException:
         return jsonify({"error": "assistant_request_failed"}), 502
