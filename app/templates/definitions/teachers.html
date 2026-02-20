@@ -49,7 +49,10 @@
     </form>
   </div>
   <div class="card p-6 lg:col-span-2">
-    <h2 class="font-display text-xl mb-4">Öğretmenler</h2>
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="font-display text-xl">Öğretmenler</h2>
+      <a class="btn-secondary" href="{{ url_for('definitions.teachers_pdf') }}">Liste PDF</a>
+    </div>
     <div class="table-scroll"><table class="table">
       {% set branch_labels = {"turkish":"Türkçe","english":"İngilizce","kazakh":"Kazakça","russian":"Rusça","mathematics":"Matematik","it":"Bilişim Teknolojileri","music":"Müzik","other":"Diğer"} %}
       <thead><tr><th>No</th><th>Ad</th><th>Ünvan</th><th>Branş</th><th>Telefon</th><th></th></tr></thead>

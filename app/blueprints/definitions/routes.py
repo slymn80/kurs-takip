@@ -1,8 +1,14 @@
 ﻿import os
 import uuid
-from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app
+import io
+from datetime import datetime
+from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, send_file
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from ...extensions import db
 from sqlalchemy.exc import IntegrityError
 from ...models import Organization, Location, CourseType, Teacher, User, Student, AuditLog
@@ -47,6 +53,75 @@ def _save_student_upload(file_storage, upload_folder, max_bytes, label):
     return f"uploads/students/{unique_name}", None
 
 
+def _pdf_font_name():
+    candidates = [
+        ("Arial", r"C:\Windows\Fonts\arial.ttf"),
+        ("DejaVuSans", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
+    ]
+    for name, path in candidates:
+        if os.path.exists(path):
+            try:
+                pdfmetrics.registerFont(TTFont(name, path))
+                return name
+            except Exception:
+                continue
+    return "Helvetica"
+
+
+def _pdf_table_response(title, headers, rows, filename_prefix):
+    buffer = io.BytesIO()
+    page_width, page_height = landscape(A4)
+    c = canvas.Canvas(buffer, pagesize=landscape(A4))
+    font_name = _pdf_font_name()
+    generated_at = datetime.now().strftime("%d.%m.%Y %H:%M")
+    page_num = 1
+
+    def draw_footer():
+        c.setFont(font_name, 8)
+        c.drawString(32, 16, generated_at)
+        c.drawRightString(page_width - 32, 16, f"Sayfa {page_num}")
+
+    def draw_header(y_start):
+        c.setFont(font_name, 14)
+        c.drawString(32, y_start, title)
+        c.setFont(font_name, 9)
+        c.drawRightString(page_width - 32, y_start, f"Kayıt: {len(rows)}")
+        return y_start - 22
+
+    def draw_table_header(y_pos, col_width):
+        c.setFont(font_name, 9)
+        x = 32
+        for head in headers:
+            c.drawString(x, y_pos, str(head))
+            x += col_width
+        return y_pos - 14
+
+    col_width = max(70, int((page_width - 64) / max(1, len(headers))))
+    y = draw_header(page_height - 32)
+    y = draw_table_header(y, col_width)
+
+    for row in rows:
+        if y < 36:
+            draw_footer()
+            c.showPage()
+            page_num += 1
+            y = draw_header(page_height - 32)
+            y = draw_table_header(y, col_width)
+        x = 32
+        c.setFont(font_name, 9)
+        for value in row:
+            text = str(value or "")
+            c.drawString(x, y, text[:28])
+            x += col_width
+        y -= 13
+
+    draw_footer()
+    c.save()
+    buffer.seek(0)
+    filename = f"{filename_prefix}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype="application/pdf")
+
+
 @definitions_bp.route("/organizations", methods=["GET", "POST"])
 @login_required
 @require_roles("coordinator", "principal", "attache", "admin")
@@ -68,6 +143,29 @@ def organizations():
         return redirect(url_for("definitions.organizations"))
     items = Organization.query.order_by(Organization.name).all()
     return render_template("definitions/organizations.html", form=form, items=items)
+
+
+@definitions_bp.route("/organizations/pdf")
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
+def organizations_pdf():
+    items = Organization.query.order_by(Organization.name).all()
+    rows = []
+    for idx, item in enumerate(items, start=1):
+        rows.append([
+            idx,
+            item.name,
+            item.responsible_person or "-",
+            item.phone or "-",
+            item.email or "-",
+            item.address or "-"
+        ])
+    return _pdf_table_response(
+        title="Kurumlar Listesi",
+        headers=["No", "Kurum", "Sorumlu", "Telefon", "E-posta", "Adres"],
+        rows=rows,
+        filename_prefix="kurumlar_listesi"
+    )
 
 
 @definitions_bp.route("/organizations/<int:org_id>/delete", methods=["POST"])
@@ -141,6 +239,28 @@ def locations():
     return render_template("definitions/locations.html", form=form, items=items)
 
 
+@definitions_bp.route("/locations/pdf")
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
+def locations_pdf():
+    items = Location.query.order_by(Location.name).all()
+    rows = []
+    for idx, item in enumerate(items, start=1):
+        rows.append([
+            idx,
+            item.name,
+            item.capacity if item.capacity is not None else "-",
+            "Evet" if item.has_smart_board else "Hayır",
+            item.address or "-"
+        ])
+    return _pdf_table_response(
+        title="Yerler Listesi",
+        headers=["No", "Yer", "Kapasite", "Akıllı Tahta", "Adres"],
+        rows=rows,
+        filename_prefix="yerler_listesi"
+    )
+
+
 @definitions_bp.route("/locations/<int:loc_id>/delete", methods=["POST"])
 @login_required
 @require_roles("admin")
@@ -208,6 +328,33 @@ def course_types():
         return redirect(url_for("definitions.course_types"))
     items = CourseType.query.order_by(CourseType.name).all()
     return render_template("definitions/course_types.html", form=form, items=items)
+
+
+@definitions_bp.route("/course-types/pdf")
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
+def course_types_pdf():
+    items = CourseType.query.order_by(CourseType.name).all()
+    mode_labels = {
+        "in_person": "Yüz yüze",
+        "remote": "Uzaktan",
+        "hybrid": "Hibrit"
+    }
+    rows = []
+    for idx, item in enumerate(items, start=1):
+        rows.append([
+            idx,
+            item.name,
+            item.course_hours if item.course_hours is not None else "-",
+            mode_labels.get(item.delivery_mode, item.delivery_mode or "-"),
+            item.description or "-"
+        ])
+    return _pdf_table_response(
+        title="Kurs Tipleri Listesi",
+        headers=["No", "Ad", "Kurs Saati", "Öğretim Şekli", "Açıklama"],
+        rows=rows,
+        filename_prefix="kurs_tipleri_listesi"
+    )
 
 
 @definitions_bp.route("/course-types/<int:ct_id>/delete", methods=["POST"])
@@ -310,6 +457,43 @@ def teachers():
         items=items,
         available_users=available_users,
         selected_user_id=form.user_id.data or 0
+    )
+
+
+@definitions_bp.route("/teachers/pdf")
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
+def teachers_pdf():
+    items = Teacher.query.order_by(Teacher.full_name).all()
+    title_labels = {
+        "teacher": "Öğretmen",
+        "academic": "Akademisyen"
+    }
+    branch_labels = {
+        "turkish": "Türkçe",
+        "english": "İngilizce",
+        "kazakh": "Kazakça",
+        "russian": "Rusça",
+        "mathematics": "Matematik",
+        "it": "Bilişim Teknolojileri",
+        "music": "Müzik",
+        "other": "Diğer"
+    }
+    rows = []
+    for idx, item in enumerate(items, start=1):
+        rows.append([
+            idx,
+            item.full_name,
+            title_labels.get(item.title, item.title or "-"),
+            branch_labels.get(item.branch, item.branch or "-"),
+            item.phone or "-",
+            item.email or "-"
+        ])
+    return _pdf_table_response(
+        title="Öğretmenler Listesi",
+        headers=["No", "Ad Soyad", "Ünvan", "Branş", "Telefon", "E-posta"],
+        rows=rows,
+        filename_prefix="ogretmenler_listesi"
     )
 
 
@@ -562,6 +746,7 @@ def edit_student(student_id):
         flash("Kursiyer güncellendi.", "success")
         return redirect(url_for("definitions.students"))
     return render_template("definitions/edit_student.html", form=form, item=student, max_file_kb=max_file_kb)
+
 
 
 

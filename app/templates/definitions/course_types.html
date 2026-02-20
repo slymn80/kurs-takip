@@ -25,7 +25,10 @@
     </form>
   </div>
   <div class="card p-6 lg:col-span-2">
-    <h2 class="font-display text-xl mb-4">Kurs Tipleri</h2>
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="font-display text-xl">Kurs Tipleri</h2>
+      <a class="btn-secondary" href="{{ url_for('definitions.course_types_pdf') }}">Liste PDF</a>
+    </div>
     <div class="table-scroll"><table class="table">
       <thead><tr><th>No</th><th>Ad</th><th>Kurs Saati</th><th>Öğretim Şekli</th><th>Açıklama</th><th></th></tr></thead>
       <tbody>

@@ -33,7 +33,10 @@
     </form>
   </div>
   <div class="card p-6 lg:col-span-2">
-    <h2 class="font-display text-xl mb-4">Kurumlar</h2>
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="font-display text-xl">Kurumlar</h2>
+      <a class="btn-secondary" href="{{ url_for('definitions.organizations_pdf') }}">Liste PDF</a>
+    </div>
     <div class="table-scroll"><table class="table">
       <thead><tr><th>No</th><th>Ad</th><th>Sorumlu</th><th>Telefon</th><th>E-posta</th><th>Adres</th><th></th></tr></thead>
       <tbody>
