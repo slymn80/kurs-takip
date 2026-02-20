@@ -2,7 +2,7 @@
 import json
 import os
 import threading
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from sqlalchemy import func
 import secrets
 import string
@@ -471,6 +471,20 @@ def api_tokens_test_bot():
         .filter(Course.status == "active", Course.organization_id.isnot(None))
         .scalar() or 0
     )
+    pending_pre_registrations = PreRegistration.query.filter(PreRegistration.status == "pending").count()
+    day_start = datetime.combine(target_date, time.min)
+    day_end = day_start + timedelta(days=1)
+    new_students_today_count = (
+        Student.query
+        .filter(
+            Student.is_active.is_(True),
+            Student.created_at >= day_start,
+            Student.created_at < day_end
+        )
+        .count()
+    )
+    attendance_total_all = totals["present"] + totals["absent"] + totals["late"] + totals["excused"]
+    avg_attendance_rate = round((totals["present"] / attendance_total_all) * 100, 2) if attendance_total_all > 0 else 0.0
 
     return jsonify({
         "report_type": "daily_course_sessions",
@@ -480,10 +494,13 @@ def api_tokens_test_bot():
         "total_teachers_count": int(total_active_teachers),
         "total_students_count": int(total_active_students),
         "total_organizations_count": int(total_active_organizations),
+        "pending_pre_registrations_count": int(pending_pre_registrations),
+        "new_students_today_count": int(new_students_today_count),
         "courses_count": len(courses),
         "sessions_count": total_sessions,
         "lesson_delivered_count": delivered_count,
         "attendance_submitted_sessions_count": submitted_count,
+        "avg_attendance_rate": avg_attendance_rate,
         "attendance_totals": totals,
         "courses": courses
     })

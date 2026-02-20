@@ -89,6 +89,7 @@ flask seed
 
 Bu akış uygulamada hazır olan endpoint ile çalışır:
 - `GET /api/reports/daily-course-sessions?date=YYYY-MM-DD`
+- `GET /api/reports/monthly-course-sessions?month=YYYY-MM` (opsiyonel; verilmezse bir önceki ay)
 - Kimlik doğrulama: `Authorization: Bearer <TOKEN>` (admin kullanıcıya ait aktif token)
 
 ### n8n tarafında sıralı yapılacaklar
@@ -127,6 +128,12 @@ Bu akış uygulamada hazır olan endpoint ile çalışır:
 - Rapor sadece `active` statüdeki kurs verilerini baz alır.
 - Belirli bir tarihte oturum yoksa `courses: []` ve günlük sayaçlar `0` döner.
 - Admin panelinde `API Tokenlar` ekranındaki satır bazlı `Test` butonu ile aynı JSON ayrı sekmede test edilebilir.
+
+### Aylık Rapor (Ayın 1'i İçin)
+- n8n zamanlamasını ayın 1'i çalışacak şekilde ayarlayın.
+- Endpoint:
+  - Otomatik geçen ay: `GET /api/reports/monthly-course-sessions`
+  - Belirli ay: `GET /api/reports/monthly-course-sessions?month=2026-02`
 
 ## Notlar
 - WhatsApp ayarları ENV üzerinden yönetilir.
