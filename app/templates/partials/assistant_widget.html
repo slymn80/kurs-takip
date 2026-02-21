@@ -11,7 +11,7 @@
   </button>
   <div id="assistant-panel" class="card p-4 mt-3 w-96 hidden">
     <div class="flex items-center justify-between mb-3">
-      <h3 class="font-display text-lg">Kurs Asistanı</h3>
+      <h3 id="assistant-title" class="font-display text-lg">Kurs Asistanı</h3>
       <button id="assistant-close" type="button" class="btn-secondary btn-sm">Kapat</button>
     </div>
     <div id="assistant-lang" class="mb-3 flex items-center gap-1">
@@ -23,9 +23,9 @@
     <div id="assistant-messages" class="border border-ink-100 rounded-xl p-3 h-64 overflow-y-auto bg-white text-sm space-y-2"></div>
     <form id="assistant-form" class="mt-3 space-y-2">
       <input id="assistant-input" class="input" maxlength="1200" placeholder="Sorunuzu yazın..." autocomplete="off">
-      <button class="btn-primary w-full" type="submit">Gönder</button>
+      <button id="assistant-submit" class="btn-primary w-full" type="submit">Gönder</button>
     </form>
-    <p class="text-xs text-ink-400 mt-2">Türkçe kurs süreçleri hakkında bilgi verir.</p>
+    <p id="assistant-note" class="text-xs text-ink-400 mt-2">Türkçe kurs süreçleri hakkında bilgi verir.</p>
   </div>
 </div>
 <script>
@@ -36,6 +36,9 @@
     const form = document.getElementById("assistant-form");
     const input = document.getElementById("assistant-input");
     const messagesEl = document.getElementById("assistant-messages");
+    const titleEl = document.getElementById("assistant-title");
+    const submitEl = document.getElementById("assistant-submit");
+    const noteEl = document.getElementById("assistant-note");
     const langButtons = Array.from(document.querySelectorAll(".assistant-lang-btn"));
     const csrfMeta = document.querySelector('meta[name="csrf-token"]');
     const csrfToken = csrfMeta ? csrfMeta.getAttribute("content") : "";
@@ -46,6 +49,48 @@
       kz: "Сәлем! Түрік тілі курстары мен тіркеу үдерісі бойынша көмектесе аламын.",
       ru: "Здравствуйте! Я помогу по курсам турецкого языка и процессу регистрации.",
       en: "Hello! I can help with Turkish course and registration processes."
+    };
+    const uiText = {
+      tr: {
+        title: "Kurs Asistanı",
+        close: "Kapat",
+        placeholder: "Sorunuzu yazın...",
+        submit: "Gönder",
+        note: "Türkçe kurs süreçleri hakkında bilgi verir.",
+        typing: "Yazıyor...",
+        noReply: "Şu anda yanıt üretilemedi.",
+        fallback: "Asistan şu anda kullanılamıyor. Lütfen tekrar deneyin."
+      },
+      kz: {
+        title: "Курс көмекшісі",
+        close: "Жабу",
+        placeholder: "Сұрағыңызды жазыңыз...",
+        submit: "Жіберу",
+        note: "Түрік тілі курстарының үдерістері туралы ақпарат береді.",
+        typing: "Жауап жазып жатыр...",
+        noReply: "Қазір жауап құру мүмкін болмады.",
+        fallback: "Көмекші қазір қолжетімсіз. Қайта көріңіз."
+      },
+      ru: {
+        title: "Ассистент курсов",
+        close: "Закрыть",
+        placeholder: "Напишите ваш вопрос...",
+        submit: "Отправить",
+        note: "Помогает по процессам курсов турецкого языка.",
+        typing: "Печатает...",
+        noReply: "Сейчас не удалось сформировать ответ.",
+        fallback: "Ассистент сейчас недоступен. Попробуйте снова."
+      },
+      en: {
+        title: "Course Assistant",
+        close: "Close",
+        placeholder: "Type your question...",
+        submit: "Send",
+        note: "Provides information about Turkish course processes.",
+        typing: "Typing...",
+        noReply: "Could not generate a response right now.",
+        fallback: "Assistant is currently unavailable. Please try again."
+      }
     };
 
     if (!toggleBtn || !panel || !form || !input || !messagesEl) {
@@ -64,6 +109,19 @@
 
     addMessage("assistant", greetings[selectedLang] || greetings.tr);
 
+    const syncUiText = () => {
+      const t = uiText[selectedLang] || uiText.tr;
+      if (titleEl) titleEl.textContent = t.title;
+      if (closeBtn) closeBtn.textContent = t.close;
+      if (input) input.placeholder = t.placeholder;
+      if (submitEl) submitEl.textContent = t.submit;
+      if (noteEl) noteEl.textContent = t.note;
+      const firstAssistant = messagesEl.firstElementChild;
+      if (firstAssistant && !history.length) {
+        firstAssistant.textContent = greetings[selectedLang] || greetings.tr;
+      }
+    };
+
     const syncLangButtons = () => {
       langButtons.forEach((btn) => {
         if (btn.getAttribute("data-lang") === selectedLang) {
@@ -75,10 +133,12 @@
         }
       });
     };
+    syncUiText();
     syncLangButtons();
     langButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
         selectedLang = btn.getAttribute("data-lang") || "tr";
+        syncUiText();
         syncLangButtons();
       });
     });
@@ -94,7 +154,7 @@
       input.value = "";
       addMessage("user", message);
       history.push({ role: "user", content: message });
-      addMessage("assistant", "Yazıyor...");
+      addMessage("assistant", (uiText[selectedLang] || uiText.tr).typing);
       const typingEl = messagesEl.lastElementChild;
 
       try {
@@ -111,11 +171,11 @@
           })
         });
         const data = await response.json();
-        const reply = data.reply || "Şu anda yanıt üretilemedi.";
+        const reply = data.reply || (uiText[selectedLang] || uiText.tr).noReply;
         typingEl.textContent = reply;
         history.push({ role: "assistant", content: reply });
       } catch (_error) {
-        typingEl.textContent = "Asistan şu anda kullanılamıyor. Lütfen tekrar deneyin.";
+        typingEl.textContent = (uiText[selectedLang] || uiText.tr).fallback;
       }
     });
   })();
