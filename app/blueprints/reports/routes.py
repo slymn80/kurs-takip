@@ -1,7 +1,10 @@
 ﻿import io
 import os
+import zipfile
+import re
+import json
 from datetime import date, datetime
-from flask import Blueprint, render_template, send_file, request, redirect, url_for, flash
+from flask import Blueprint, render_template, send_file, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.pdfgen import canvas
@@ -13,6 +16,7 @@ from ...models import Course, Enrollment, Student, Teacher, Organization, Certif
 from ...extensions import db
 from ...utils import serialize_json
 from ...security import require_roles
+from xml.sax.saxutils import escape as xml_escape
 
 
 reports_bp = Blueprint("reports", __name__)
@@ -318,6 +322,246 @@ def _certificate_pdf(certificate):
     return buffer
 
 
+def _attendance_certificate_payload():
+    student_full_name = (request.args.get("student_full_name") or "").strip()
+    hours_count = (request.args.get("hours_count") or "").strip()
+    level = (request.args.get("level") or "").strip()
+    cert_date = (request.args.get("cert_date") or "").strip()
+    instructor_name = (request.args.get("instructor_name") or "").strip()
+    if not cert_date:
+        cert_date = datetime.now().strftime("%d.%m.%Y")
+    return {
+        "student_full_name": student_full_name,
+        "hours_count": hours_count,
+        "level": level,
+        "cert_date": cert_date,
+        "instructor_name": instructor_name
+    }
+
+
+def _attendance_certificate_template_path():
+    project_root = os.path.abspath(os.path.join(current_app.root_path, ".."))
+    candidates = [
+        os.path.join(project_root, "Katılım Belgesi.docx"),
+        os.path.join(project_root, "Katilim Belgesi.docx"),
+        os.path.join(current_app.root_path, "static", "certificates", "katilim_belgesi.docx"),
+        os.path.join(current_app.root_path, "static", "certificates", "Katılım Belgesi.docx"),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def _replace_nearest_ellipsis(xml_text, anchor, value, search_forward=True, window=600):
+    if not value:
+        return xml_text
+    idx = xml_text.find(anchor)
+    if idx == -1:
+        return xml_text
+    if search_forward:
+        segment_start = idx
+        segment_end = min(len(xml_text), idx + window)
+    else:
+        segment_start = max(0, idx - window)
+        segment_end = idx
+    segment = xml_text[segment_start:segment_end]
+    escaped_value = xml_escape(value)
+    if value.startswith(" ") or value.endswith(" "):
+        repl = f'<w:t xml:space="preserve">{escaped_value}</w:t>'
+    else:
+        repl = f"<w:t>{escaped_value}</w:t>"
+    matches = list(re.finditer(r"<w:t[^>]*>(.*?)</w:t>", segment, flags=re.DOTALL))
+    if not matches:
+        return xml_text
+    candidate_index = None
+    for i, m in enumerate(matches):
+        text_inner = (m.group(1) or "").strip()
+        compact = text_inner.replace(" ", "")
+        if "…" in compact or compact in {"..", "...", "....", "/../….", "/../../"}:
+            candidate_index = i
+            break
+    if candidate_index is None:
+        candidate_index = 0
+    m = matches[candidate_index]
+    segment2 = segment[:m.start()] + repl + segment[m.end():]
+    return xml_text[:segment_start] + segment2 + xml_text[segment_end:]
+
+
+def _replace_nearest_ellipsis_all(xml_text, anchor, value, search_forward=True, window=600):
+    if not value:
+        return xml_text
+    out = xml_text
+    start_pos = 0
+    while True:
+        idx = out.find(anchor, start_pos)
+        if idx == -1:
+            break
+        if search_forward:
+            segment_start = idx
+            segment_end = min(len(out), idx + window)
+            next_pos = idx + len(anchor)
+        else:
+            segment_start = max(0, idx - window)
+            segment_end = idx
+            next_pos = idx + len(anchor)
+        segment = out[segment_start:segment_end]
+        escaped_value = xml_escape(value)
+        if value.startswith(" ") or value.endswith(" "):
+            repl = f'<w:t xml:space="preserve">{escaped_value}</w:t>'
+        else:
+            repl = f"<w:t>{escaped_value}</w:t>"
+        matches = list(re.finditer(r"<w:t[^>]*>(.*?)</w:t>", segment, flags=re.DOTALL))
+        if not matches:
+            start_pos = next_pos
+            continue
+        candidate_index = None
+        for i, m in enumerate(matches):
+            text_inner = (m.group(1) or "").strip()
+            compact = text_inner.replace(" ", "")
+            if "…" in compact or compact in {"..", "...", "....", "/../….", "/../../"}:
+                candidate_index = i
+                break
+        if candidate_index is None:
+            start_pos = next_pos
+            continue
+        m = matches[candidate_index]
+        segment2 = segment[:m.start()] + repl + segment[m.end():]
+        out = out[:segment_start] + segment2 + out[segment_end:]
+        start_pos = max(0, segment_end - 1)
+    return out
+
+
+def _replace_docx_tokens_binary(template_path, replacements):
+    """
+    Replace token strings directly in DOCX XML parts.
+    This preserves the font/style defined in the template because run properties stay intact.
+    Also applies fallback replacements for legacy template marks (ellipsis-based placeholders).
+    """
+    out_stream = io.BytesIO()
+    with zipfile.ZipFile(template_path, "r") as zin, zipfile.ZipFile(out_stream, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename == "word/document.xml":
+                try:
+                    xml_text = data.decode("utf-8")
+                except UnicodeDecodeError:
+                    zout.writestr(item, data)
+                    continue
+                updated = xml_text
+                for key, value in replacements.items():
+                    updated = updated.replace(key, xml_escape(value or ""))
+
+                # Fallbacks for current template if explicit placeholders are absent.
+                updated = _replace_nearest_ellipsis_all(updated, "Say", replacements.get("student_full_name", ""), search_forward=True)
+                hours_text = (replacements.get("hours_count", "") or "").strip()
+                level_text = (replacements.get("level", "") or "").strip()
+                updated = _replace_nearest_ellipsis_all(
+                    updated,
+                    "<w:t>saatlik</w:t>",
+                    f"{hours_text} " if hours_text else "",
+                    search_forward=False
+                )
+                updated = _replace_nearest_ellipsis_all(
+                    updated,
+                    "zeyi</w:t>",
+                    f" {level_text} " if level_text else "",
+                    search_forward=False
+                )
+                if replacements.get("cert_date"):
+                    updated = re.sub(
+                        r"<w:t[^>]*>\s*/\s*\.\.\s*/\s*[^<]*</w:t>",
+                        f"<w:t>{xml_escape(replacements['cert_date'])}</w:t>",
+                        updated,
+                        count=0,
+                        flags=re.DOTALL
+                    )
+                updated = _replace_nearest_ellipsis_all(updated, "Kurs E", replacements.get("instructor_name", ""), search_forward=False)
+                # "Kazanmıştır" sonrasında kalan gereksiz ".." parçasını temizle.
+                updated = re.sub(r"<w:t[^>]*>\s*\.\.\s*</w:t>", '<w:t xml:space="preserve"> </w:t>', updated)
+
+                data = updated.encode("utf-8")
+            elif item.filename.endswith(".xml"):
+                try:
+                    xml_text = data.decode("utf-8")
+                except UnicodeDecodeError:
+                    zout.writestr(item, data)
+                    continue
+                updated = xml_text
+                for key, value in replacements.items():
+                    updated = updated.replace(key, xml_escape(value or ""))
+                data = updated.encode("utf-8")
+            zout.writestr(item, data)
+    out_stream.seek(0)
+    return out_stream
+
+
+def _filled_attendance_docx_stream(data):
+    template_path = _attendance_certificate_template_path()
+    if not template_path:
+        return None
+    replacements = {
+        "{{KURSIYER_ADI_SOYADI}}": data["student_full_name"],
+        "{{SAAT_SAYISI}}": data["hours_count"],
+        "{{DUZEY}}": data["level"],
+        "{{TARIH}}": data["cert_date"],
+        "{{KURS_EGITMENI}}": data["instructor_name"],
+        "student_full_name": data["student_full_name"],
+        "hours_count": data["hours_count"],
+        "level": data["level"],
+        "cert_date": data["cert_date"],
+        "instructor_name": data["instructor_name"],
+    }
+    return _replace_docx_tokens_binary(template_path, replacements)
+
+
+def _render_attendance_preview_html(data):
+    stream = _filled_attendance_docx_stream(data)
+    if not stream:
+        return "<p>Şablon bulunamadı.</p>"
+    qs = request.query_string.decode("utf-8", errors="ignore")
+    src_url = url_for("reports.attendance_certificate_docx_source")
+    if qs:
+        src_url = f"{src_url}?{qs}"
+    src_url_json = json.dumps(src_url)
+    return f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    html, body {{ margin: 0; padding: 0; background: #f7f7f7; }}
+    #preview-root {{ padding: 20px; display: flex; justify-content: center; min-height: 95vh; }}
+    #preview-root .docx-wrapper {{ background: #f7f7f7; }}
+  </style>
+  <script src="https://unpkg.com/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
+</head>
+<body>
+  <div id="preview-root">Belge yükleniyor...</div>
+  <script>
+    (async function() {{
+      const root = document.getElementById("preview-root");
+      try {{
+        const response = await fetch({src_url_json}, {{ credentials: "same-origin" }});
+        if (!response.ok) throw new Error("DOCX alınamadı");
+        const buffer = await response.arrayBuffer();
+        root.innerHTML = "";
+        await window.docx.renderAsync(buffer, root, null, {{
+          className: "docx",
+          inWrapper: true,
+          ignoreWidth: false,
+          ignoreHeight: false,
+          breakPages: true,
+          ignoreFonts: false
+        }});
+      }} catch (_error) {{
+        root.innerHTML = "<p>Önizleme oluşturulamadı.</p>";
+      }}
+    }})();
+  </script>
+</body>
+</html>"""
+
+
 def _academic_year_for_date(dt):
     if not dt:
         return None
@@ -556,6 +800,140 @@ def certificate_pdf(certificate_id):
     stream = _certificate_pdf(cert)
     filename = f"certificate_{cert.serial_no}.pdf"
     return send_file(stream, as_attachment=True, download_name=filename, mimetype="application/pdf")
+
+
+@reports_bp.route("/attendance-certificate")
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
+def attendance_certificate():
+    data = _attendance_certificate_payload()
+    return render_template("reports/attendance_certificate.html", data=data)
+
+
+@reports_bp.route("/attendance-certificate/preview")
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
+def attendance_certificate_preview():
+    data = _attendance_certificate_payload()
+    html = _render_attendance_preview_html(data)
+    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+
+
+@reports_bp.route("/attendance-certificate/docx-source")
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
+def attendance_certificate_docx_source():
+    data = _attendance_certificate_payload()
+    stream = _filled_attendance_docx_stream(data)
+    if not stream:
+        return "Template not found", 404
+    return send_file(
+        stream,
+        as_attachment=False,
+        download_name="katilim_belgesi_preview.docx",
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+
+
+@reports_bp.route("/attendance-certificate/pdf")
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
+def attendance_certificate_pdf():
+    data = _attendance_certificate_payload()
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=landscape(A4))
+    width, height = landscape(A4)
+    font_name = _font_name()
+
+    c.setStrokeColorRGB(0.78, 0.71, 0.56)
+    c.setLineWidth(2)
+    c.rect(30, 30, width - 60, height - 60)
+
+    c.setFont(font_name, 22)
+    c.drawCentredString(width / 2, height - 85, "KATILIM BELGESİ")
+    c.setFont(font_name, 12)
+    c.drawCentredString(width / 2, height - 110, "Almatı Eğitim Ataşeliği")
+
+    c.setFont(font_name, 13)
+    c.drawCentredString(width / 2, height - 155, "Aşağıda bilgileri yer alan kursiyerin kursa katılımı onaylanmıştır.")
+    c.setFont(font_name, 20)
+    c.drawCentredString(width / 2, height - 205, data["student_full_name"] or "........................................")
+
+    c.setFont(font_name, 12)
+    c.drawCentredString(
+        width / 2,
+        height - 245,
+        f"Düzey: {data['level'] or '-'}   |   Saat: {data['hours_count'] or '-'}   |   Tarih: {data['cert_date'] or '-'}"
+    )
+    c.drawCentredString(width / 2, height - 270, f"Kurs Eğitmeni: {data['instructor_name'] or '-'}")
+
+    c.line(90, 105, 290, 105)
+    c.drawString(140, 90, "Kurs Eğitmeni")
+    c.line(width - 290, 105, width - 90, 105)
+    right_name = _attache_name()
+    if right_name:
+        c.drawRightString(width - 130, 107, right_name)
+    c.drawRightString(width - 130, 90, "Eğitim Ataşesi")
+
+    c.setFont(font_name, 9)
+    c.drawString(40, 40, f"Oluşturma: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
+    c.save()
+    buffer.seek(0)
+    filename = f"katilim_belgesi_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=filename, mimetype="application/pdf")
+
+
+@reports_bp.route("/attendance-certificate/docx")
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
+def attendance_certificate_docx():
+    template_path = _attendance_certificate_template_path()
+    if not template_path:
+        flash("Katılım Belgesi.docx şablonu bulunamadı.", "error")
+        return redirect(url_for("reports.attendance_certificate"))
+
+    data = _attendance_certificate_payload()
+    stream = _filled_attendance_docx_stream(data)
+    if not stream:
+        flash("Katılım belgesi üretilemedi.", "error")
+        return redirect(url_for("reports.attendance_certificate"))
+    def _slug(v):
+        txt = (v or "").strip().lower()
+        tr_map = str.maketrans({
+            "ç": "c", "ğ": "g", "ı": "i", "ö": "o", "ş": "s", "ü": "u",
+            "Ç": "c", "Ğ": "g", "İ": "i", "Ö": "o", "Ş": "s", "Ü": "u"
+        })
+        txt = txt.translate(tr_map)
+        txt = re.sub(r"[^a-z0-9]+", "_", txt)
+        return txt.strip("_")
+
+    student_part = _slug(data.get("student_full_name")) or "kursiyer"
+    date_part = _slug(data.get("cert_date")) or datetime.now().strftime("%d_%m_%Y")
+    hours_part = _slug(data.get("hours_count")) or "saat"
+    level_part = _slug(data.get("level")) or "seviye"
+    filename = f"{student_part}_{date_part}_{hours_part}_{level_part}.docx"
+    return send_file(
+        stream,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+
+
+@reports_bp.route("/attendance-certificate/template-docx")
+@login_required
+@require_roles("coordinator", "principal", "attache", "admin")
+def attendance_certificate_template_docx():
+    template_path = _attendance_certificate_template_path()
+    if not template_path:
+        flash("Katılım Belgesi.docx şablonu bulunamadı.", "error")
+        return redirect(url_for("reports.attendance_certificate"))
+    return send_file(
+        template_path,
+        as_attachment=True,
+        download_name="katilim_belgesi_sablon.docx",
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
 
 
 @reports_bp.route("/course-ledger")

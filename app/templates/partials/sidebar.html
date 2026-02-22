@@ -19,6 +19,7 @@
       <a href="{{ url_for('reports.index') }}" class="nav-link {% if current == 'reports.index' %}nav-link-active{% endif %}">Raporlar</a>
       {% if current_user.role != 'teacher' %}
         <a href="{{ url_for('reports.certificates') }}" class="nav-link {% if current == 'reports.certificates' %}nav-link-active{% endif %}">Sertifikalar</a>
+        <a href="{{ url_for('reports.attendance_certificate') }}" class="nav-link {% if current == 'reports.attendance_certificate' %}nav-link-active{% endif %}">Katılım Belgesi</a>
       {% endif %}
       <a href="{{ url_for('announcements.index') }}" class="nav-link {% if current and current.startswith('announcements.') %}nav-link-active{% endif %}">Ataşelik Duyuruları</a>
     {% endif %}
